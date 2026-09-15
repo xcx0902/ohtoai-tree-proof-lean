@@ -1,12 +1,15 @@
 /-
-# Scratch: the diameter lemmas of `REF.md` §3 and §9
+# Distances to a diameter
 
-This file contains `sorry`-free proofs of
+This file contains the metric lemmas of `REF.md` that concern a diameter of a state:
 
-* `dist_le_min_index` (REF.md §3, Lemma 1): a branch hanging off the diameter at `p i` has height
-  at most `min i (D - i)`;
-* `dist_le_max_dist_ends` (REF.md §9, Lemma 6): for a diameter with endpoints `p 0` and `p D`, the
-  eccentricity of any vertex is realised by one of the two endpoints.
+* `dist_le_min_index` — **Lemma 1 (§3)**: a branch hanging off the diameter at `p i` has height at
+  most `min i (D - i)`, i.e. the projection of a vertex onto the diameter is no farther from it
+  than the nearer end of the diameter;
+* `dist_le_max_dist_ends` — **Lemma 6 (§9)**: for a diameter with endpoints `p 0` and `p D`, the
+  eccentricity of any vertex is realised by one of the two endpoints;
+* `exists_common_opposite` — **Lemma 7 (§10)**, derived here from Lemma 6: two diameter endpoints
+  are either antipodal, or have a common diameter endpoint opposite to both of them.
 
 Everything rests on the fact that a state is a *tree*: `S.acyclic` together with the connectivity
 `S.connected` on `alive`.
@@ -19,9 +22,10 @@ The two distance lemmas about acyclic graphs that we use are
 
 The second one drives the "no zigzag" induction of `dist_eq_dist_add_of_le` /
 `dist_eq_dist_add_of_ge`, which computes the distance from `u` to every vertex of the diameter when
-`u`'s closest point on the diameter is known.
+`u`'s closest point on the diameter is known.  `DiamPath.dist_eq_dist_add` is that computation, and
+`DiamPath.dist_path` / `DiamPath.diam_eq_D` are corollaries.
 -/
-import OhtoaiTreeProof.Basic
+import OhtoaiTreeProof.PathExists
 import Mathlib.Data.Fintype.Lattice
 
 set_option linter.unusedSectionVars false
@@ -179,13 +183,11 @@ noncomputable def seq (k : ℕ) : V := P.p ⟨min k P.D, by omega⟩
 theorem seq_eq {k : ℕ} (hk : k ≤ P.D) : P.seq k = P.p ⟨k, by omega⟩ := by
   unfold seq
   congr 1
-  exact Fin.ext (by omega)
+  exact Fin.ext (by simp [Nat.min_eq_left hk])
 
 /-- The `ℕ`-indexed sequence agrees with the `Fin`-indexed path. -/
-theorem seq_val (i : Fin (P.D + 1)) : P.seq (i : ℕ) = P.p i := by
-  rw [P.seq_eq (by omega)]
-  congr 1
-  exact Fin.ext rfl
+theorem seq_val (i : Fin (P.D + 1)) : P.seq (i : ℕ) = P.p i :=
+  P.seq_eq (by omega)
 
 theorem seq_adj : ∀ k < P.D, S.graph.Adj (P.seq k) (P.seq (k + 1)) := by
   intro k hk
@@ -205,6 +207,12 @@ theorem seq_inj : ∀ k ≤ P.D, ∀ l ≤ P.D, P.seq k = P.seq l → k = l := b
 
 /-- `↑P.last = P.D`. -/
 theorem val_last : ((P.last : Fin (P.D + 1)) : ℕ) = P.D := DiamPath.last_val P
+
+/-- Every index of the diameter is at most the last one. -/
+theorem val_le_last (i : Fin (P.D + 1)) : (i : ℕ) ≤ (P.last : ℕ) := by
+  have := i.isLt
+  simp only [DiamPath.val_last]
+  omega
 
 /-- **Distance from a vertex to the diameter.**  If `P.p i` is a closest vertex of the diameter to
 the live vertex `u`, then the distance from `u` to `P.p k` is obtained from the distance to `P.p i`
@@ -260,16 +268,17 @@ theorem dist_le_min_index (P : DiamPath S) {u : V} (hu : u ∈ S.alive) {i : Fin
     (hmin : ∀ j : Fin (P.D + 1), S.graph.dist u (P.p i) ≤ S.graph.dist u (P.p j)) :
     S.graph.dist u (P.p i) ≤ min (i : ℕ) (P.D - (i : ℕ)) := by
   have h := P.dist_eq_dist_add hu i hmin
-  have hile : (i : ℕ) ≤ (P.last : ℕ) := by simpa [DiamPath.val_last] using i.isLt.le
   -- distances to the two endpoints
-  have hfst := h.2 0 (Nat.zero_le _)
-  have hlst := h.1 P.last hile
+  have hfst : S.graph.dist u (P.p 0) = S.graph.dist u (P.p i) + (i : ℕ) := by
+    simpa using h.2 0 (Nat.zero_le _)
+  have hlst : S.graph.dist u (P.p P.last) =
+      S.graph.dist u (P.p i) + (P.D - (i : ℕ)) := by
+    simpa [DiamPath.val_last] using h.1 P.last (P.val_le_last i)
   -- every live vertex is at distance at most the diameter, which is `D`
   have h1 : S.graph.dist u (P.p 0) ≤ S.diam := S.dist_le_diam hu (P.mem 0)
   have h2 : S.graph.dist u (P.p P.last) ≤ S.diam := S.dist_le_diam hu (P.mem P.last)
   have h3 : S.diam = P.D := P.diam_eq_D
-  have hlast : ((P.last : Fin (P.D + 1)) : ℕ) = P.D := DiamPath.val_last P
-  omega
+  refine le_min ?_ ?_ <;> omega
 
 /-! ## REF.md §9, Lemma 6 -/
 
@@ -283,7 +292,7 @@ theorem dist_le_max_dist_ends (P : DiamPath S) {x : V} (hx : x ∈ S.alive) :
   obtain ⟨i, hi⟩ := Finite.exists_min (fun i : Fin (P.D + 1) => S.graph.dist x (P.p i))
   obtain ⟨j, hj⟩ := Finite.exists_min (fun j : Fin (P.D + 1) => S.graph.dist y (P.p j))
   have hx' := P.dist_eq_dist_add hx i hi
-  have hile : (i : ℕ) ≤ (P.last : ℕ) := by simpa [DiamPath.val_last] using i.isLt.le
+  have hile : (i : ℕ) ≤ (P.last : ℕ) := P.val_le_last i
   -- the three point inequality around `P.p i` and `P.p j`
   have htri : S.graph.dist x y ≤
       S.graph.dist x (P.p i) + S.graph.dist (P.p i) (P.p j) + S.graph.dist y (P.p j) := by
@@ -292,9 +301,8 @@ theorem dist_le_max_dist_ends (P : DiamPath S) {x : V} (hx : x ∈ S.alive) :
     have h3 : S.graph.dist (P.p j) y = S.graph.dist y (P.p j) := dist_comm
     omega
   -- the branch height bound at `y`
-  have hy' := P.dist_le_min_index hy hj
+  have hy' := dist_le_min_index P hy hj
   have hdist_p := P.dist_path i j
-  have hlast : ((P.last : Fin (P.D + 1)) : ℕ) = P.D := DiamPath.val_last P
   rcases le_total (i : ℕ) (j : ℕ) with hij | hji
   · have hk : S.graph.dist y (P.p j) ≤ P.D - (j : ℕ) :=
       le_trans hy' (min_le_right _ _)
@@ -305,10 +313,37 @@ theorem dist_le_max_dist_ends (P : DiamPath S) {x : V} (hx : x ∈ S.alive) :
     exact le_trans this (le_max_right _ _)
   · have hk : S.graph.dist y (P.p j) ≤ (j : ℕ) :=
       le_trans hy' (min_le_left _ _)
-    have hfst : S.graph.dist x (P.p 0) =
-        S.graph.dist x (P.p i) + ((i : ℕ) - 0) := hx'.2 0 (Nat.zero_le _)
+    have hfst : S.graph.dist x (P.p 0) = S.graph.dist x (P.p i) + (i : ℕ) := by
+      simpa using hx'.2 0 (Nat.zero_le _)
     rw [hdist_p] at htri
     have : S.graph.dist x y ≤ S.graph.dist x (P.p 0) := by omega
     exact le_trans this (le_max_left _ _)
+
+/-- **REF.md Lemma 7 (§10).**  Two diameter endpoints `a`, `b` of a tree are either antipodal, or
+have a common diameter endpoint `c` opposite to both of them.
+
+This is proved from Lemma 6 as in `REF.md`: take a diameter `b`–`c`; since `a` is a diameter
+endpoint, `ecc a = diam = max (d a b) (d a c)` by Lemma 6, so `d a b < diam` forces
+`d a c = diam`. -/
+theorem exists_common_opposite {S : TreeState V} {a b : V} (ha : IsDiamEnd S a)
+    (hb : IsDiamEnd S b) :
+    S.graph.dist a b = S.diam ∨
+      ∃ c : V, IsDiamEnd S c ∧ S.graph.dist a c = S.diam ∧ S.graph.dist b c = S.diam := by
+  obtain ⟨P, hP⟩ := exists_diamPath_at S hb
+  by_cases hab : S.graph.dist a b = S.diam
+  · exact Or.inl hab
+  · refine Or.inr ⟨P.p P.last, P.isDiamEnd_last, ?_, by rw [← hP]; exact P.isDiam⟩
+    obtain ⟨y, hy, hay⟩ := ha.2
+    have hle := dist_le_max_dist_ends P ha.1 y hy
+    rw [hay] at hle
+    have h1 : S.graph.dist a (P.p 0) ≤ S.diam := S.dist_le_diam ha.1 (P.mem 0)
+    have h2 : S.graph.dist a (P.p P.last) ≤ S.diam := S.dist_le_diam ha.1 (P.mem P.last)
+    have hmax : max (S.graph.dist a (P.p 0)) (S.graph.dist a (P.p P.last)) = S.diam :=
+      le_antisymm (max_le h1 h2) hle
+    rcases max_cases (S.graph.dist a (P.p 0)) (S.graph.dist a (P.p P.last)) with ⟨h, _⟩ | ⟨h, _⟩
+    · rw [h, hP] at hmax
+      omega
+    · rw [h] at hmax
+      exact hmax
 
 end OhtoaiTreeProof

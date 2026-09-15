@@ -16,18 +16,12 @@ def mirror (i : Fin P.D) : Fin P.D := ⟨P.D - 1 - (i : ℕ), by omega⟩
 @[simp] theorem mirror_val (i : Fin P.D) : (P.mirror i : ℕ) = P.D - 1 - (i : ℕ) := rfl
 
 example (i : Fin P.D) (hi2 : P.D / 2 ≤ (i : ℕ)) (hne' : P.mirror i ≠ i) :
-    (P.mirror i : ℕ) < (i : ℕ) := by
-  have hne : (P.mirror i : ℕ) ≠ (i : ℕ) := fun h => hne' (Fin.ext h)
-  simp only [mirror_val]
-  omega
-
-example (i : Fin P.D) (hi2 : P.D / 2 ≤ (i : ℕ)) (hne' : P.mirror i ≠ i) :
     ¬ (P.D / 2 ≤ (P.mirror i : ℕ)) := by
-  have hlt : (P.mirror i : ℕ) < (i : ℕ) := by
-    have hne : (P.mirror i : ℕ) ≠ (i : ℕ) := fun h => hne' (Fin.ext h)
-    simp only [mirror_val]
+  have hlt : P.D - 1 - (i : ℕ) < (i : ℕ) := by
+    have hle : P.D - 1 - (i : ℕ) ≤ (i : ℕ) := by omega
+    have hne : P.D - 1 - (i : ℕ) ≠ (i : ℕ) := fun hh => hne' (Fin.ext hh)
     omega
-  simp only [mirror_val] at hlt ⊢
+  show ¬ (P.D / 2 ≤ P.D - 1 - (i : ℕ))
   omega
 
 end DiamPath

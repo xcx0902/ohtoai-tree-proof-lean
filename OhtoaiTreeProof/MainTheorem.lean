@@ -17,6 +17,7 @@ complete folding process has length `Phi S`: all complete processes have the sam
 (`fold_count_unique`).
 -/
 import OhtoaiTreeProof.Exchange
+import OhtoaiTreeProof.Diameter
 
 set_option linter.unusedSectionVars false
 
@@ -51,25 +52,6 @@ theorem LValue_endpoint_independent {S : TreeState V} {s t : V} {n : ℕ}
     (hs : IsDiamEnd S s) (ht : IsDiamEnd S t) (h : LValue S s n) : LValue S t n := by
   sorry
 
-/-- REF.md Lemma 7 (§10): two diameter endpoints of a tree either are antipodal, or have a common
-diameter endpoint opposite to both of them. -/
-theorem exists_common_opposite {S : TreeState V} {a b : V} (ha : IsDiamEnd S a)
-    (hb : IsDiamEnd S b) :
-    S.graph.dist a b = S.diam ∨
-      ∃ c : V, IsDiamEnd S c ∧ S.graph.dist a c = S.diam ∧ S.graph.dist b c = S.diam := by
-  sorry
-
-/-- REF.md Propositions 2 and 3 (§12): every single folding operation, along an arbitrary
-diameter, decreases the value of the process by exactly one.
-
-`REF.md` proves this by taking the diameter `a`–`b` along which the operation folds: `a` is a
-diameter endpoint, `Phi S = L(S,a)`, the first operation of the fixed-endpoint process from `a`
-is exactly this fold, and the merged vertex `q` of `a` and `b` is a diameter endpoint of `S'`
-(Lemma 3), so that `L(S,a) = 1 + L(S',q) = 1 + Phi S'`. -/
-theorem Phi_step {S S' : TreeState V} (h : FoldStep S S') (hcard : 2 ≤ S.alive.card) :
-    Phi S = Phi S' + 1 := by
-  sorry
-
 /-! ## The value is realised by the fixed-endpoint process -/
 
 /-- The value of a state is realised by a complete process towards any of its diameter
@@ -87,6 +69,28 @@ theorem LValue_Phi {S : TreeState V} {s : V} (hs : IsDiamEnd S s) : LValue S s (
       Classical.choose_spec (Classical.choose_spec (Phi_exists S h)).2
     rw [hd]
     exact LValue_endpoint_independent hEnd hs hL
+
+/-- REF.md Proposition 3 (§12): every single folding operation, along an arbitrary diameter,
+decreases the value of the process by exactly one.
+
+`REF.md` proves this by looking at the diameter `a`–`b` along which the operation folds: `a` is a
+diameter endpoint, and by Lemma 3 the merged vertex `q` of `a` and `b` is a diameter endpoint of
+the folded tree `S'`.  Hence a complete process from `S'` towards `q` (`LValue_Phi`), preceded by
+this very operation, is a complete process from `S` towards `a`; by Proposition 1 its length is
+`Phi S`, and the length of the rest is `Phi S'`. -/
+theorem Phi_step {S S' : TreeState V} (h : FoldStep S S') (hcard : 2 ≤ S.alive.card) :
+    Phi S = Phi S' + 1 := by
+  obtain ⟨Q, rfl⟩ := h
+  have hEndS : IsDiamEnd S (Q.p 0) := Q.isDiamEnd_zero
+  have hEndS' : IsDiamEnd Q.foldState (Q.p 0) := isDiamEnd_foldState Q
+  obtain ⟨T, hseq, hsingle⟩ := LValue_Phi hEndS'
+  have hstep : FoldStepAt (Q.p 0) S Q.foldState := ⟨Q, rfl, rfl⟩
+  have hseqAll : FoldSeqAt (Q.p 0) S T (Phi Q.foldState + 1) :=
+    FoldSeqAt.step hcard hstep hseq
+  obtain ⟨T', hseq', hsingle'⟩ := LValue_Phi hEndS
+  have := LValue_unique S.alive.card S T T' (Q.p 0) (Phi Q.foldState + 1) (Phi S) le_rfl hEndS
+    hseqAll hseq' hsingle hsingle'
+  omega
 
 /-! ## The main theorem -/
 

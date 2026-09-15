@@ -10,6 +10,69 @@ open SimpleGraph
 
 variable {V : Type*} [Fintype V] [DecidableEq V]
 
+/-! ## Two elementary walk lemmas -/
+
+/-- A vertex of an edge of the graph belongs to the support of the graph. -/
+theorem mem_support_of_mem_edgeSet {G : SimpleGraph V} {e : Sym2 V} (he : e ∈ G.edgeSet)
+    {x : V} (hx : x ∈ e) : x ∈ G.support := by
+  induction e using Sym2.ind with
+  | h a b =>
+    rw [SimpleGraph.mem_edgeSet] at he
+    rcases Sym2.mem_iff'.mp (Sym2.mem_iff_mem.mpr hx) with rfl | rfl
+    · exact he.mem_support_left
+    · exact he.mem_support_right
+
+/-- If every edge of a walk has both endpoints in `s` and its start is in `s`, then every vertex
+of the walk lies in `s`. -/
+theorem Walk.support_subset_of_mem_edges {G : SimpleGraph V} {s : Set V} {u v : V}
+    {p : G.Walk u v} (he : ∀ e ∈ p.edges, ∀ x ∈ e, x ∈ s) (hu : u ∈ s) :
+    ∀ x ∈ p.support, x ∈ s := by
+  intro x hx
+  by_cases hnil : p.Nil
+  · rw [SimpleGraph.Walk.nil_iff_support_eq.mp hnil] at hx
+    exact (List.mem_singleton.mp hx) ▸ hu
+  · obtain ⟨e, hep, hxe⟩ := (SimpleGraph.Walk.mem_support_iff_exists_mem_edges_of_not_nil hnil).mp hx
+    exact he e hep x hxe
+
+namespace TreeState
+
+variable (S : TreeState V)
+
+theorem graph_support_subset_alive : S.graph.support ⊆ (↑S.alive : Set V) := by
+  rintro v ⟨w, hw⟩
+  exact (S.adj_alive hw).1
+
+/-- The graph induced by a state on its live vertices is connected. -/
+theorem induce_alive_connected (hne : S.alive.Nonempty) :
+    (S.graph.induce (↑S.alive : Set V)).Connected := by
+  refine ⟨fun u v => ?_, ⟨S.alive.min' hne, Finset.min'_mem _ hne⟩⟩
+  obtain ⟨p⟩ := S.connected u.1 u.2 v.1 v.2
+  have hsupp : ∀ x ∈ p.support, x ∈ (↑S.alive : Set V) :=
+    Walk.support_subset_of_mem_edges
+      (fun e he x hx => S.graph_support_subset_alive
+        (mem_support_of_mem_edgeSet (p.edges_subset_edgeSet he) hx)) u.2
+  exact ⟨(p.induce _ hsupp).copy (Subtype.ext rfl) (Subtype.ext rfl)⟩
+
+/-- The graph induced by a state on its live vertices is a tree. -/
+theorem induce_alive_isTree (hne : S.alive.Nonempty) :
+    (S.graph.induce (↑S.alive : Set V)).IsTree :=
+  ⟨S.induce_alive_connected hne, S.acyclic.induce _⟩
+
+/-- A state with `n` live vertices has exactly `n - 1` edges. -/
+theorem edgeFinset_card_add_one (hne : S.alive.Nonempty) :
+    S.graph.edgeFinset.card + 1 = S.alive.card := by
+  have h1 : Nat.card (S.graph.induce (↑S.alive : Set V)).edgeSet + 1
+      = Nat.card ↥(↑S.alive : Set V) :=
+    (isTree_iff_connected_and_card.mp (S.induce_alive_isTree hne)).2
+  have h2 : Nat.card (S.graph.induce (↑S.alive : Set V)).edgeSet = S.graph.edgeFinset.card := by
+    rw [Nat.card_eq_fintype_card, SimpleGraph.card_edgeSet]
+    exact SimpleGraph.card_edgeFinset_induce_of_support_subset S.graph_support_subset_alive
+  have h3 : Nat.card ↥(↑S.alive : Set V) = S.alive.card := by
+    rw [Nat.card_coe_set_eq, Set.ncard_coe_finset]
+  omega
+
+end TreeState
+
 namespace DiamPath
 
 variable {S : TreeState V} (P : DiamPath S)
@@ -143,6 +206,18 @@ theorem card_badIdx : P.badIdx.card = P.D - P.D / 2 := by
 theorem card_badSet : P.badSet.card = P.D - P.D / 2 := by
   rw [badSet, Finset.card_image_of_injective _ P.pe_inj, P.card_badIdx]
 
+/-! ## The induced graph on the folded vertices -/
+
+/-- The vertices of the folded tree, as a set. -/
+def foldSet : Set V := ↑P.foldAlive
+
+theorem foldGraph_support_subset : P.foldGraph.support ⊆ P.foldSet := by
+  rintro v ⟨w, hw⟩
+  exact (P.foldGraph_adj.mp hw).2.1
+
+/-- The folded graph induced on the vertices of the folded tree. -/
+abbrev foldInduce : SimpleGraph P.foldSet := P.foldGraph.induce P.foldSet
+
 /-! ## Counting the edges of the folded graph -/
 
 /-- Every edge of the folded graph is the folded image of an edge of the current tree which is
@@ -159,26 +234,24 @@ theorem foldGraph_edgeFinset_subset :
     by_cases hbad : s(x, y) ∈ P.badSet
     · obtain ⟨i, hi, hipe⟩ := Finset.mem_image.mp hbad
       have hi2 : P.D / 2 ≤ (i : ℕ) := P.mem_badIdx.mp hi
-      have hne'' : (P.mirror i : ℕ) ≠ (i : ℕ) := fun h => by
-        rcases eq_or_ne (P.mirror i) i with h' | h'
-        · exact h' (Fin.ext h)
-        · exact h' rfl
       rcases eq_or_ne (P.mirror i) i with heq | hne'
       · -- the central edge of an odd diameter folds to a loop, which is not an edge
         exfalso
         have hdiag := P.isDiag_map_rep_pe_of_mirror_eq i heq
         rw [hipe, Sym2.map_mk, hx, hy] at hdiag
         exact hne (Sym2.mk_isDiag_iff.mp hdiag)
-      · have hlt : (P.mirror i : ℕ) < (i : ℕ) := by
-          have : (P.mirror i : ℕ) ≠ (i : ℕ) := fun h => hne' (Fin.ext h)
-          simp only [mirror_val]
+      · have hgood : ¬ (P.D / 2 ≤ (P.mirror i : ℕ)) := by
+          have hlt : P.D - 1 - (i : ℕ) < (i : ℕ) := by
+            have hle : P.D - 1 - (i : ℕ) ≤ (i : ℕ) := by omega
+            have hne : P.D - 1 - (i : ℕ) ≠ (i : ℕ) := fun hh => hne' (Fin.ext hh)
+            omega
+          show ¬ (P.D / 2 ≤ P.D - 1 - (i : ℕ))
           omega
         refine Finset.mem_image.mpr
           ⟨P.pe (P.mirror i), Finset.mem_sdiff.mpr ⟨P.pe_mem_edgeFinset _, ?_⟩, ?_⟩
         · rw [P.pe_mem_badSet, P.mem_badIdx]
-          simp only [mirror_val]
-          omega
-        · rw [P.map_rep_pe_mirror i, ← hipe, Sym2.map_mk, hx, hy]
+          exact hgood
+        · rw [P.map_rep_pe_mirror i, hipe, Sym2.map_mk, hx, hy]
     · exact Finset.mem_image.mpr
         ⟨s(x, y), Finset.mem_sdiff.mpr ⟨hxyE, hbad⟩, by rw [Sym2.map_mk, hx, hy]⟩
 
@@ -260,7 +333,7 @@ theorem pathSet_filter_card :
     · rintro ⟨j, -, hj⟩
       refine ⟨Finset.mem_univ _, ?_⟩
       rw [← hj]
-      simp only [Fin.val_mk]
+      show (j : ℕ) ≤ P.D / 2
       omega
   rw [h3, Finset.card_image_of_injective _
       (fun a b hab => Fin.ext (by simpa using congrArg Fin.val hab)),
@@ -278,6 +351,59 @@ theorem card_alive_eq : S.alive.card = P.foldAlive.card + (P.D - P.D / 2) := by
     rw [P.foldAlive_eq, Finset.card_union_of_disjoint hdisj]
   rw [← h1, h2, P.card_pathSet, P.pathSet_filter_card]
   omega
+
+/-! ## The folded graph is a tree -/
+
+/-- The folded graph, restricted to the vertices of the folded tree, is connected. -/
+theorem foldInduce_connected : P.foldInduce.Connected := by
+  refine ⟨fun u v => ?_, ⟨P.p 0, (P.path_mem_foldAlive (i := 0)).mpr (by omega)⟩⟩
+  have hu : P.rep u.1 = u.1 := (P.mem_foldAlive.mp u.2).2
+  have hv : P.rep v.1 = v.1 := (P.mem_foldAlive.mp v.2).2
+  obtain ⟨w⟩ := P.fold_reachable
+    (S.connected u.1 (P.mem_foldAlive.mp u.2).1 v.1 (P.mem_foldAlive.mp v.2).1)
+  have hw := w.copy hu.symm hv.symm
+  have hsupp : ∀ x ∈ hw.support, x ∈ P.foldSet :=
+    Walk.support_subset_of_mem_edges
+      (fun e he x hx => P.foldGraph_support_subset
+        (mem_support_of_mem_edgeSet (hw.edges_subset_edgeSet he) hx)) u.2
+  exact ⟨(hw.induce _ hsupp).copy (Subtype.ext rfl) (Subtype.ext rfl)⟩
+
+/-- **The folded graph on its vertex set is a tree.** -/
+theorem foldInduce_isTree : P.foldInduce.IsTree := by
+  refine isTree_iff_connected_and_card.mpr ⟨P.foldInduce_connected, ?_⟩
+  have h1 : Nat.card P.foldInduce.edgeSet = P.foldGraph.edgeFinset.card := by
+    rw [Nat.card_eq_fintype_card, SimpleGraph.card_edgeSet]
+    exact SimpleGraph.card_edgeFinset_induce_of_support_subset P.foldGraph_support_subset
+  have h2 : Nat.card P.foldSet = P.foldAlive.card := by
+    rw [Nat.card_coe_set_eq]
+    show (↑P.foldAlive : Set V).ncard = P.foldAlive.card
+    rw [Set.ncard_coe_finset]
+  have hE : S.graph.edgeFinset.card + 1 = S.alive.card :=
+    S.edgeFinset_card_add_one ⟨P.p 0, P.mem 0⟩
+  have he := P.card_foldGraph_edgeFinset
+  have hv := P.card_alive_eq
+  rw [h1, h2]
+  omega
+
+/-- **Folding a tree along a diameter again yields a tree.**  The folded graph has exactly
+`|alive| - ⌈D/2⌉` vertices and `|alive| - 1 - ⌈D/2⌉` edges, hence is acyclic. -/
+theorem foldGraph_isAcyclic' : P.foldGraph.IsAcyclic := by
+  intro v c hc
+  have hv : v ∈ P.foldSet := by
+    cases c with
+    | nil => exact absurd rfl hc.not_nil
+    | cons hadj rest => exact (P.foldGraph_adj.mp hadj).2.1
+  have hsupp : ∀ x ∈ c.support, x ∈ P.foldSet :=
+    Walk.support_subset_of_mem_edges
+      (fun e he x hx => P.foldGraph_support_subset
+        (mem_support_of_mem_edgeSet (c.edges_subset_edgeSet he) hx)) hv
+  have hcyc : (c.induce P.foldSet hsupp).IsCycle := by
+    have h2 : ((c.induce P.foldSet hsupp).map
+        (SimpleGraph.Embedding.induce P.foldSet).toHom).IsCycle := by
+      rw [Walk.map_induce]
+      exact hc
+    exact Walk.IsCycle.of_map h2
+  exact P.foldInduce_isTree.isAcyclic _ hcyc
 
 end DiamPath
 

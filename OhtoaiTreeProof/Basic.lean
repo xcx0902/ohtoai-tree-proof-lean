@@ -263,6 +263,39 @@ theorem fold_reachable {u v : V} (h : S.graph.Reachable u v) :
   | nil => exact ⟨SimpleGraph.Walk.nil⟩
   | cons hadj rest ih => exact (P.reachable_rep_of_adj hadj).trans ih
 
+/-- The folding map sends the endpoints of an edge of the current tree to vertices of the folded
+tree at distance at most one. -/
+theorem exists_walk_rep_of_adj {a b : V} (h : S.graph.Adj a b) :
+    ∃ w : P.foldGraph.Walk (P.rep a) (P.rep b), w.length ≤ 1 := by
+  rcases eq_or_ne (P.rep a) (P.rep b) with heq | hne
+  · exact ⟨SimpleGraph.Walk.nil.copy heq.symm rfl, by simp⟩
+  · exact ⟨SimpleGraph.Walk.cons ⟨hne, P.rep_mem_foldAlive (S.adj_alive h).1,
+      P.rep_mem_foldAlive (S.adj_alive h).2, a, b, h, rfl, rfl⟩ SimpleGraph.Walk.nil, le_rfl⟩
+
+/-- Folding never lengthens a walk: the image of a walk of the current tree is a walk of the folded
+tree, of at most the same length (steps which are folded onto a single vertex disappear). -/
+theorem exists_fold_walk_le {u v : V} (w : S.graph.Walk u v) :
+    ∃ w' : P.foldGraph.Walk (P.rep u) (P.rep v), w'.length ≤ w.length := by
+  induction w with
+  | nil => exact ⟨SimpleGraph.Walk.nil, le_rfl⟩
+  | cons hadj rest ih =>
+      obtain ⟨w₁, h₁⟩ := P.exists_walk_rep_of_adj hadj
+      obtain ⟨w₂, h₂⟩ := ih
+      exact ⟨w₁.append w₂, by
+        simp only [SimpleGraph.Walk.length_append, SimpleGraph.Walk.length_cons]
+        omega⟩
+
+/-- **Folding does not increase distances.**  This is the metric content of "the folded tree is the
+quotient of the current tree": the image of a geodesic is a walk of at most the same length, and the
+distance of the folded graph is the length of a shortest walk. -/
+theorem fold_dist_le {u v : V} (hu : u ∈ S.alive) (hv : v ∈ S.alive) :
+    P.foldGraph.dist (P.rep u) (P.rep v) ≤ S.graph.dist u v := by
+  obtain ⟨w, -, hw⟩ := (S.connected u hu v hv).exists_path_of_dist
+  obtain ⟨w', hw'⟩ := P.exists_fold_walk_le w
+  calc P.foldGraph.dist (P.rep u) (P.rep v) ≤ w'.length := SimpleGraph.dist_le w'
+    _ ≤ w.length := hw'
+    _ = S.graph.dist u v := hw
+
 /-- The folded graph is acyclic, so that the folded state is again a tree.  The proof is the
 edge- and vertex-counting argument of `REF.md` §2, see `OhtoaiTreeProof.FoldTree`. -/
 theorem foldGraph_isAcyclic : P.foldGraph.IsAcyclic := by

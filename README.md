@@ -67,14 +67,14 @@ The assembly is complete and mirrors `REF.md` §11–13:
 | §1 | the folding operation, the quotient | `DiamPath.rep`, `foldAlive`, `foldGraph`, `foldState` | **proved** |
 | §2 | the folded graph is again a tree | `foldGraph_isAcyclic` | **proved** (the counting argument: `|alive| = |foldAlive| + ⌈D/2⌉` vertex-wise, `|E'| + ⌈D/2⌉ ≤ |E|` edge-wise, connectivity, and `|E| + 1 = |alive|`) |
 | §3 Lemma 1 | a branch at `p i` has height `≤ min i (D-i)` | `dist_le_min_index` | **proved** |
-| §4 Lemma 2 | the cone tree lemma | — | **gap** — needed for Lemma 3 (the route of §5); not formalized yet |
-| §5 Lemma 3 | an endpoint stays a diameter endpoint when folding towards it | `isDiamEnd_foldState` | **gap** |
+| §4 Lemma 2 | the cone tree lemma | `Cone.dist_le_max`, `Cone.exists_dist_eq` | **proved** (for an arbitrary finite acyclic graph and a path) |
+| §5 Lemma 3 | an endpoint stays a diameter endpoint when folding towards it | `isDiamEnd_foldState` (`Cone.lean`) | **proved** |
 | §6 Lemma 4 | `2r ≤ D` for two farthest vertices | `TreeState.dist_le_diam` | **proved** |
 | §7 Lemma 5 | the delayed exchange lemma | `exchange` | **gap** — the mathematical core |
 | §8 Prop. 1 | the fixed-endpoint process has a choice-independent length | `LValue_unique` | **proved** from Lemma 3 and Lemma 5 |
 | §9 Lemma 6 | `ecc x = max (d x u) (d x v)` for a diameter `u v` | `dist_le_max_dist_ends` | **proved** |
 | §10 Lemma 7 | two diameter endpoints have a common opposite | `exists_common_opposite` | **proved** from Lemma 6 |
-| §10 Prop. 2 | all diameter endpoints give the same value | `LValue_endpoint_independent` | **gap** (needs Lemma 7 and Lemma 3) |
+| §10 Prop. 2 | all diameter endpoints give the same value | `LValue_endpoint_independent` | **gap** (its two ingredients are now proved: Lemma 7, and the isomorphism invariance of the process in `Iso.lean`, including `lValue_foldState_reverse`, the formal counterpart of "folding towards the two ends of a diameter gives the same quotient tree") |
 | §11–12 Prop. 3 | one operation decreases the value by exactly one | `Phi_step` | **proved** from Prop. 1, Prop. 2 and Lemma 3 |
 | §13 | conclusion | `fold_count_unique` | **proved** |
 
@@ -86,30 +86,23 @@ there (`exists_diamPath_at`).
 
 ## What is left, precisely
 
-Three declarations still contain a `sorry`; they are exactly the mathematical content of `REF.md`
+Two declarations still contain a `sorry`; they are exactly the mathematical content of `REF.md`
 that is not yet formalized:
 
-1. `isDiamEnd_foldState` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 3: after folding, every branch
-   hanging at the `j`-th vertex `q j` of the folded diameter has height at most `j` (the branches at
-   `p j` and at `p (D-j)` both have height at most `min j (D-j) = j` by Lemma 1); `REF.md` §4's cone
-   lemma (Lemma 2) then shows that `q 0` is still a diameter endpoint, since for vertices `x`, `y`
-   hanging at `q i`, `q j` one has `d x y = h x + |i - j| + h y ≤ j + h y = d (q 0) y`.  The
-   formalization needs the cone lemma for a general tree (a projection/height formula for the
-   vertices of a tree relative to a path) on top of the triangle-type bounds already proved
-   (`DiamPath.dist_eq_dist_add`, `DiamPath.fold_dist_le`).
-2. `exchange` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 5, the delayed exchange lemma: the two
+1. `exchange` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 5, the delayed exchange lemma: the two
    folds towards `s` along two different diameters differ only inside a ball around the branching
    point of the two diameters, and that ball is destroyed by the first few further folds.
-3. `LValue_endpoint_independent` (`OhtoaiTreeProof/MainTheorem.lean`) — Proposition 2.  Here the
-   formalization has to do slightly more than `REF.md`: `REF.md` says that folding along the same
-   diameter `a`–`b` towards `a` and towards `b` gives "the same abstract quotient tree", which is
-   true up to isomorphism — the two folded states differ by the permutation `p i ↦ p (D - i)`
-   of the diameter.  Formalizing that step requires an isomorphism-invariance lemma for the
-   process (a `StateIso` structure, transportation of `DiamPath`/`FoldStep`/`LValue` along a
-   permutation, and the commutation of `rep` with it), which is not yet in the development.
+2. `LValue_endpoint_independent` (`OhtoaiTreeProof/MainTheorem.lean`) — Proposition 2.  Every
+   ingredient is now proved: Lemma 7 (`exists_common_opposite`), Lemma 3, and the isomorphism
+   invariance of the process (`Iso.lean`), whose `lValue_foldState_reverse` is precisely `REF.md`'s
+   statement that folding along the same diameter towards its two ends gives the same quotient
+   tree — formalized as invariance under the mirror permutation `p i ↦ p (D - i)`, which is what
+   `REF.md` leaves implicit here.  What remains is the assembly: decomposing `LValue S s (n+1)`
+   into a first fold plus a strategy from the folded tree (using Proposition 1), and applying
+   Lemma 7 to reduce `d (s,t) < diam` to `d (s,t) = diam`.
 
 Every state of the process is now *proved* to be a tree (`DiamPath.foldGraph_isAcyclic`, `REF.md`
-§2), so the only assumptions left in the development are the three statements above.
+§2), so the only assumptions left in the development are the two statements above.
 
 ## Building
 
@@ -121,15 +114,23 @@ lake build OhtoaiTreeProof      # builds the library only
 ```
 
 `Main.lean` prints a short description of the formalized statement.  The module layout follows the
-proof: `Basic.lean` (states, diameters, folding, and the counting argument of §2), `Progress.lean` (folding decreases the number of
-vertices), `PathExists.lean` (a diameter starting at a given endpoint), `Diameter.lean` (the metric
-lemmas about a diameter: `REF.md` Lemmas 1, 6 and 7), `Exchange.lean` (`REF.md` Lemmas 3 and 5, and
-the derivation of Proposition 1 and of `Phi_exists`), `MainTheorem.lean` (the value `Phi`, the
-propositions, and the main theorem).
+proof: `Basic.lean` (states, diameters, folding, and the counting argument of §2),
+`Progress.lean` (folding decreases the number of vertices), `PathExists.lean` (a diameter starting
+at a given endpoint), `Diameter.lean` (the metric lemmas about a diameter: `REF.md` Lemmas 1, 6
+and 7), `Cone.lean` (`REF.md` Lemmas 2 and 3: the cone lemma and the fact that folding towards an
+endpoint keeps it a diameter endpoint), `Exchange.lean` (`REF.md` Lemma 5, and the derivation of
+Proposition 1 and of `Phi_exists` from Lemmas 3 and 5), `Iso.lean` (isomorphism invariance of the
+process: `StateIso`, transport of diameters and folds, `lValue_foldState_reverse`), and
+`MainTheorem.lean` (the value `Phi`, the propositions, and the main theorem)., `Progress.lean` (folding decreases the number of vertices),
+`PathExists.lean` (a diameter starting at a given endpoint), `Diameter.lean` (the metric lemmas
+about a diameter: `REF.md` Lemmas 1, 6 and 7), `Exchange.lean` (`REF.md` Lemmas 3 and 5, and the
+derivation of Proposition 1 and of `Phi_exists`), `Iso.lean` (isomorphism invariance of the
+process: `StateIso`, transport of diameters and folds, and `lValue_foldState_reverse`), and
+`MainTheorem.lean` (the value `Phi`, the propositions, and the main theorem).
 
-Everything except the three `sorry`s above is checked by Lean: `#print axioms
+Everything except the two `sorry`s above is checked by Lean: `#print axioms
 OhtoaiTreeProof.fold_count_unique` reports only `propext`, `Classical.choice` and `Quot.sound`
-besides the `sorryAx` contributed by the three open statements, and
+besides the `sorryAx` contributed by the two open statements, and
 `#print axioms OhtoaiTreeProof.DiamPath.foldGraph_isAcyclic` reports no `sorryAx` at all.  The development was also checked
 against the computational experiments in `research/verify_invariance.py` (exhaustive over all
 labelled trees with at most 8 vertices, plus random trees up to 14 vertices): every complete

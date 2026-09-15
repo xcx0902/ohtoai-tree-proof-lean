@@ -17,9 +17,10 @@ The two structural statements are
   towards `s` along two different diameters, the same number of further folds towards `s` leads to
   the same rooted tree.
 
-Both of them are consequences of the geometry of the folded tree (the height bound of Lemma 1 and
-the cone lemma of Lemma 2); they are the only `sorry`s of this file's subject matter.
+Lemma 3 is proved in `OhtoaiTreeProof/Cone.lean` (from the height bound of Lemma 1 and the cone
+lemma of Lemma 2, `REF.md` §3–§5); the only `sorry` left here is Lemma 5.
 -/
+import OhtoaiTreeProof.Cone
 import OhtoaiTreeProof.PathExists
 import OhtoaiTreeProof.Progress
 
@@ -30,19 +31,6 @@ namespace OhtoaiTreeProof
 open SimpleGraph
 
 variable {V : Type*} [Fintype V] [DecidableEq V]
-
-/-! ## Lemma 3 of `REF.md`: the endpoint stays a diameter endpoint -/
-
-/-- **REF.md Lemma 3 (§5).**  If we fold along a diameter starting at `P.p 0`, then `P.p 0` is
-still a diameter endpoint of the resulting tree.
-
-(`REF.md` proves this by analysing, for every vertex `z` of the folded tree, its projection onto
-the folded diameter: its height above the projection is at most the distance of the projection to
-the nearer end (Lemma 1), which is exactly the height of the corresponding vertex on the far side
-of the diameter — so the diameter is still realised by a pair of vertices on the folded diameter.) -/
-theorem isDiamEnd_foldState {S : TreeState V} (P : DiamPath S) :
-    IsDiamEnd P.foldState (P.p 0) := by
-  sorry
 
 /-! ## Lemma 5 of `REF.md`: the delayed exchange lemma -/
 

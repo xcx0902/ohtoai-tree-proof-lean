@@ -3,6 +3,8 @@
 import OhtoaiTreeProof.Basic
 import OhtoaiTreeProof.Progress
 import OhtoaiTreeProof.PathExists
+import OhtoaiTreeProof.Cone
 import OhtoaiTreeProof.Diameter
 import OhtoaiTreeProof.Exchange
+import OhtoaiTreeProof.Iso
 import OhtoaiTreeProof.MainTheorem

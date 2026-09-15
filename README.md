@@ -67,7 +67,7 @@ The assembly is complete and mirrors `REF.md` §11–13:
 | §1 | the folding operation, the quotient | `DiamPath.rep`, `foldAlive`, `foldGraph`, `foldState` | **proved** |
 | §2 | the folded graph is again a tree | `foldGraph_isAcyclic` | **gap** (connectivity `fold_reachable` and progress `FoldStep.card_lt` are proved; acyclicity is the counting argument of §2) |
 | §3 Lemma 1 | a branch at `p i` has height `≤ min i (D-i)` | `dist_le_min_index` | **proved** |
-| §4 Lemma 2 | the cone tree lemma | — | not needed by this route (used in §5) |
+| §4 Lemma 2 | the cone tree lemma | — | **gap** — needed for Lemma 3 (the route of §5); not formalized yet |
 | §5 Lemma 3 | an endpoint stays a diameter endpoint when folding towards it | `isDiamEnd_foldState` | **gap** |
 | §6 Lemma 4 | `2r ≤ D` for two farthest vertices | `TreeState.dist_le_diam` | **proved** |
 | §7 Lemma 5 | the delayed exchange lemma | `exchange` | **gap** — the mathematical core |
@@ -91,10 +91,18 @@ that is not yet formalized:
 
 1. `foldGraph_isAcyclic` (`OhtoaiTreeProof/Basic.lean`) — `REF.md` §2: counting vertices and
    edges, one finds `|V'| = |V| - ⌈D/2⌉` and `|E'| = |E| - ⌈D/2⌉`, so the folded graph is connected
-   with `|E'| = |V'| - 1` edges, hence a tree.
-2. `isDiamEnd_foldState` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 3: compare the height of a
-   vertex of the folded tree above its projection on the folded diameter (Lemma 1) with the height
-   of the corresponding vertex on the far side of the diameter.
+   with `|E'| = |V'| - 1` edges, hence a tree.  (The vertex count, the edge bound
+   `|E'| + ⌈D/2⌉ ≤ |E|` and the connectivity of the folded graph are all proved; what is missing is
+   closing the induced graph's edge count to a tree via
+   `SimpleGraph.Connected.card_vert_le_card_edgeSet_add_one` and `isTree_iff_connected_and_card`.)
+2. `isDiamEnd_foldState` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 3: after folding, every branch
+   hanging at the `j`-th vertex `q j` of the folded diameter has height at most `j` (the branches at
+   `p j` and at `p (D-j)` both have height at most `min j (D-j) = j` by Lemma 1); `REF.md` §4's cone
+   lemma (Lemma 2) then shows that `q 0` is still a diameter endpoint, since for vertices `x`, `y`
+   hanging at `q i`, `q j` one has `d x y = h x + |i - j| + h y ≤ j + h y = d (q 0) y`.  The
+   formalization needs the cone lemma for a general tree (a projection/height formula for the
+   vertices of a tree relative to a path) on top of the triangle-type bounds already proved
+   (`DiamPath.dist_eq_dist_add`, `DiamPath.fold_dist_le`).
 3. `exchange` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 5, the delayed exchange lemma: the two
    folds towards `s` along two different diameters differ only inside a ball around the branching
    point of the two diameters, and that ball is destroyed by the first few further folds.

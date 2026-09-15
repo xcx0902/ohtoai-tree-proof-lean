@@ -69,7 +69,7 @@ set.**  Applied to the difference region `Δ`, this is `REF.md` §7's observatio
 at distance more than `2r` from `s`, and the paths leading to them, are the same in the two
 trees". -/
 theorem notMem_of_deltaClosed {T : TreeState V} {D : Set V} {s w : V} (hcl : DeltaClosed T D s)
-    (hs : s ∈ T.alive) (hw : w ∈ T.alive) (hwD : w ∉ D) {p : T.graph.Walk s w} (hp : p.IsPath) :
+    (hs : s ∈ T.alive) (_hw : w ∈ T.alive) (hwD : w ∉ D) {p : T.graph.Walk s w} (hp : p.IsPath) :
     ∀ k ≤ p.length, p.getVert k ∉ D := by
   intro k hk
   by_contra hkD
@@ -213,6 +213,30 @@ theorem exists_commonDiamPath (hinv : SyncInv P Q T₁ T₂ s) (Z : DiamPath T�
 
 end SyncInv
 
+/-- **A live vertex of `Δ` never lies on the `P`-diameter.**  If `v = p i` were live in
+`P.foldState` and in `Δ`, then `v` would survive the fold (`2 * i ≤ D`) while the description of `Δ`
+on the diameter (`seq_mem_Delta_iff`) forces `i > ℓ`; but `2 * r ≤ D` gives `ℓ ≥ D / 2`, a
+contradiction.  Consequently `P.rep` is the identity on `Δ ∩ P.foldAlive`, which is the form in
+which the closure of `Δ` in `P.foldState` will be proved. -/
+theorem notMem_pathSet_of_mem_Delta_foldAlive (P Q : DiamPath S) {s : V} (hP : P.p 0 = s)
+    (hQ : Q.p 0 = s) {v : V} (hvA : v ∈ P.foldAlive) (hv : v ∈ P.Delta Q s) :
+    v ∉ P.pathSet := by
+  intro hvP
+  obtain ⟨i, -, hi⟩ := Finset.mem_image.mp hvP
+  have hiD : (i : ℕ) ≤ P.D := by have := i.isLt; omega
+  have hvi : v = P.seq (i : ℕ) := by rw [P.seq_val i]; exact hi.symm
+  have hℓ : P.meetIdx Q < (i : ℕ) := (P.seq_mem_Delta_iff Q hP hQ hiD).mp (hvi ▸ hv)
+  have hfix : P.rep (P.seq (i : ℕ)) = P.seq (i : ℕ) := by
+    rw [← hvi]; exact (P.mem_foldAlive.mp hvA).2
+  rw [P.rep_seq hiD] at hfix
+  have hik : (i : ℕ) ≤ P.D - (i : ℕ) := by
+    have hminD : min (i : ℕ) (P.D - (i : ℕ)) ≤ P.D := by omega
+    have h := P.seq_inj (min (i : ℕ) (P.D - (i : ℕ))) hminD (i : ℕ) hiD hfix
+    omega
+  have htw := P.two_mul_tail_le Q hP hQ
+  have hl := P.meetIdx_le Q
+  omega
+
 /-! ## 3. The synchronised step
 
 While the common diameter `H` of the two states is larger than `2r`, a diameter of `T₁` starting at
@@ -241,6 +265,46 @@ theorem mem_Delta_of_dist_eq_add {P Q : DiamPath S} {s v w : V} (hs : s ∈ S.al
     have h2 : S.graph.dist (Q.seq j) w ≤ S.graph.dist (Q.seq j) v + S.graph.dist v w :=
       (S.connected (Q.seq j) htA v hvS).dist_triangle_left w
     exact ⟨Q.seq j, P.mem_tailSet.mpr (Or.inr ⟨j, hj, hjD, rfl⟩), by omega⟩
+
+/-- A state of positive diameter has a pair of common diameter paths from any diameter endpoint:
+take the same diameter path twice. -/
+theorem commonEndgame_self (T : TreeState V) {s : V} (hs : IsDiamEnd T s) (hpos : 1 ≤ T.diam) :
+    CommonEndgame T T s := by
+  obtain ⟨Z, hZ⟩ := exists_diamPath_at T hs
+  have hD : 1 ≤ Z.D := by rw [← Z.diam_eq_D]; exact hpos
+  exact ⟨Z, Z, hD, hD, hZ, hZ, rfl⟩
+
+/-- **The case `r = 0` of the headline: the two diameters coincide.**  If `ℓ = D` the two tails are
+empty, so the two folding maps agree (`rep_eq_of_not_mem_tailSet` applied to the empty tail set) and
+the two folded states are literally equal.  Both processes then stay equal (`m = 0`), and one
+diameter path of that state starting at `s` serves as both `Z₁` and `Z₂`. -/
+theorem foldState_eq_of_tail_eq_zero (P Q : DiamPath S) {s : V} (hP : P.p 0 = s) (hQ : Q.p 0 = s)
+    (h0 : P.D - P.meetIdx Q = 0) : P.foldState = Q.foldState := by
+  have hℓ : P.meetIdx Q = P.D := by have := P.meetIdx_le Q; omega
+  have hrep : ∀ x : V, P.rep x = Q.rep x := fun x =>
+    P.rep_eq_of_not_mem_tailSet Q hP hQ (fun hx => by
+      rcases P.mem_tailSet.mp hx with ⟨i, hi, hiD, -⟩ | ⟨j, hj, hjD, -⟩ <;> omega)
+  refine TreeState.ext ?_ ?_
+  · show P.foldAlive = Q.foldAlive
+    ext x
+    rw [P.mem_foldAlive, Q.mem_foldAlive, hrep x]
+  · show P.foldGraph = Q.foldGraph
+    ext u v
+    simp only [P.foldGraph_adj, Q.foldGraph_adj, P.mem_foldAlive, Q.mem_foldAlive, hrep]
+
+/-- **The `r = 0` instance of the headline statement**: with `m = 0` and both states equal to
+`P.foldState = Q.foldState`, `CommonEndgame` reduces to the existence of one diameter path of
+positive length starting at `s`, which is the nondegeneracy hypothesis `1 ≤ P.foldState.diam`. -/
+theorem exists_commonEndgame_of_diam_of_tail_eq_zero (P Q : DiamPath S) {s : V} (hP : P.p 0 = s)
+    (hQ : Q.p 0 = s) (h0 : P.D - P.meetIdx Q = 0) (hpos : 1 ≤ P.foldState.diam) :
+    ∃ m T₁ T₂, FoldSeqAt s P.foldState T₁ m ∧ FoldSeqAt s Q.foldState T₂ m ∧
+      CommonEndgame T₁ T₂ s := by
+  have hstate := P.foldState_eq_of_tail_eq_zero Q hP hQ h0
+  have hself : CommonEndgame P.foldState P.foldState s :=
+    commonEndgame_self P.foldState (by rw [← hP]; exact isDiamEnd_foldState P) hpos
+  refine ⟨0, P.foldState, Q.foldState, FoldSeqAt.refl _, FoldSeqAt.refl _, ?_⟩
+  rw [show Q.foldState = P.foldState from hstate.symm]
+  exact hself
 
 variable {P Q : DiamPath S} {T₁ T₂ : TreeState V} {s : V}
 
@@ -281,11 +345,23 @@ recorded in the exact form in which the present file would consume them.
 ### 4.1 The descent property of `Δ` for the initial pair
 
 `SyncInv` requires `DeltaClosed` for the two states, and neither `Phase1Inv` nor any lemma of
-`Phase1.lean` provides it.  For the initial pair it is true and provable from the description of `Δ`:
-`Δ ∩ P.foldAlive` consists of vertices lying off the `P`-diameter (`P.seq_mem_Delta_iff` plus
-`two_mul_tail_le` rule out the vertices of the `P`-diameter itself), so `P.rep` is the identity
-there, and the witness of `v ∈ Δ` is inherited by the neighbour of `v` away from `s`
-(`mem_Delta_of_dist_eq_add` above is the `S`-level form of exactly this inheritance).
+`Phase1.lean` provides it.  For the initial pair the proof reduces as follows.  Write `T₁ =
+P.foldState`.  If `v ∈ Δ ∩ T₁.alive`, then `v ∉ P.pathSet`
+(`notMem_pathSet_of_mem_Delta_foldAlive` above: `P.seq_mem_Delta_iff` forces `i > ℓ` while liveness
+forces `2i ≤ D`, and `2r ≤ D` gives `ℓ ≥ D/2`), hence `P.rep v = v` and `P.rep ⁻¹' {v} = {v}`: a
+preimage `x` with `P.rep x = v` either is off the path (`rep_of_index_none`, so `x = v`) or is a
+path vertex, whose image is again a path vertex (`rep_of_index_some`), contradiction.  So a
+`T₁`-neighbour `w` of `v` is `P.rep y` for an `S`-neighbour `y` of `v`, and — `v` being off the path
+— the `S`-neighbours of `v` are the neighbours of `v` in `S` minus the diameter, one of which is the
+unique path vertex adjacent to `v` and the others are off the path (`rep` is the identity on them).
+Two cases remain: `y` off the path (then `w = y` and one concludes `w ∈ Δ` from
+`mem_Delta_of_dist_eq_add`, the crucial point being that `dist s y = dist s v + 1` in `S` — this uses
+that `v ∈ Δ` is itself described by a tail vertex, so that the `S`-path from `s` to `v` reaches `v`
+from the tail side; note that folding can shorten `dist s v` strictly, so this equality is *not* a
+formal consequence of the preceding bounds and is the technical heart of the case), and `y = p i` on
+the path (then `w = p (min i (D - i))` and `w ∈ Δ` follows from
+`Δ`'s description on the diameter).  This is the only mathematical content of the synchronised phase
+that is *not* yet formalised.
 
 ```
 theorem deltaClosed_fold (P Q : DiamPath S) {s : V} (hP : P.p 0 = s) (hQ : Q.p 0 = s) :
@@ -330,7 +406,9 @@ synchronised folds.  Two honest routes:
 
 ### 4.4 The statement proved here
 
-`exists_commonEndgame_of_diam_of_diam_eq` above is the `H = 2 r` case.  The full statement
+Two instances of the headline are proved above: `exists_commonEndgame_of_diam_of_diam_eq` (the case
+`H = 2 r`, via `endgame_of_diam`) and `exists_commonEndgame_of_diam_of_tail_eq_zero` (the case
+`r = 0`, via `foldState_eq_of_tail_eq_zero` and `commonEndgame_self`).  The full statement
 
 ```
 theorem exists_commonEndgame_of_diam (P Q : DiamPath S) {s : V} (hs : IsDiamEnd S s)

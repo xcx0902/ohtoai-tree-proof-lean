@@ -17,6 +17,7 @@ complete folding process has length `Phi S`: all complete processes have the sam
 (`fold_count_unique`).
 -/
 import OhtoaiTreeProof.Exchange
+import OhtoaiTreeProof.Iso
 import OhtoaiTreeProof.Diameter
 
 set_option linter.unusedSectionVars false
@@ -43,6 +44,93 @@ theorem Phi_eq_zero_of_single {S : TreeState V} (h : IsSingle S) : Phi S = 0 := 
 
 /-! ## The propositions of `REF.md` that make up the mathematical core -/
 
+/-! ## Auxiliary facts about the fixed-endpoint process -/
+
+/-- A folding sequence of length zero is the identity sequence. -/
+theorem FoldSeqAt.eq_of_zero : ∀ {S S' : TreeState V} {s : V} {n : ℕ},
+    FoldSeqAt s S S' n → n = 0 → S' = S := by
+  intro S S' s n h
+  induction h with
+  | refl => intro _; rfl
+  | step hpos hstep htail ih => intro hn; exact absurd hn (by omega)
+
+/-- No operation can be performed from a state with at most one vertex, so a sequence of length
+`n` from such a state has `n = 0`. -/
+theorem FoldSeqAt.eq_zero_of_card_le_one : ∀ {S S' : TreeState V} {s : V} {n : ℕ},
+    FoldSeqAt s S S' n → S.alive.card ≤ 1 → n = 0 := by
+  intro S S' s n h
+  induction h with
+  | refl => intro _; rfl
+  | step hpos hstep htail ih => intro hc; exact absurd hpos (by omega)
+
+/-- A nonempty folding sequence can only start from a state with at least two vertices. -/
+theorem FoldSeqAt.two_le_card_of_pos : ∀ {S S' : TreeState V} {s : V} {n : ℕ},
+    FoldSeqAt s S S' n → 1 ≤ n → 2 ≤ S.alive.card := by
+  intro S S' s n h
+  induction h with
+  | refl => intro hn; exact absurd hn (by omega)
+  | step hpos hstep htail ih => intro _; exact hpos
+
+/-- A diameter path joining two diameter endpoints that are at distance `diam` from each other,
+with both endpoints prescribed. -/
+theorem exists_diamPath_between (S : TreeState V) {s t : V} (hs : IsDiamEnd S s)
+    (ht : IsDiamEnd S t) (hd : S.graph.dist s t = S.diam) :
+    ∃ P : DiamPath S, P.p 0 = s ∧ P.p P.last = t := by
+  classical
+  refine ⟨S.diamPathOf hs.1 ht.1 hd, ?_, ?_⟩
+  · show (S.diamPathOf hs.1 ht.1 hd).p 0 = s
+    unfold TreeState.diamPathOf
+    simp only [Fin.val_zero]
+    rw [SimpleGraph.Walk.getVert_zero]
+  · show (S.diamPathOf hs.1 ht.1 hd).p (S.diamPathOf hs.1 ht.1 hd).last = t
+    unfold TreeState.diamPathOf
+    simp only [DiamPath.last, Fin.val_mk, SimpleGraph.Walk.getVert_length]
+
+/-- The case `d (s,t) = diam` of `REF.md` Proposition 2: the two endpoints are joined by a common
+diameter, so the first fold can be taken along that diameter, and by `lValue_foldState_reverse`
+folding towards `s` and towards `t` along it lead to the same value. -/
+theorem LValue_of_dist_eq_diam {S : TreeState V} {s t : V} (hs : IsDiamEnd S s)
+    (ht : IsDiamEnd S t) (hd : S.graph.dist s t = S.diam) {n : ℕ}
+    (h : LValue S s n) : LValue S t n := by
+  by_cases hcard : S.alive.card ≤ 1
+  · obtain ⟨S₁, h₁, -⟩ := h
+    rw [FoldSeqAt.eq_zero_of_card_le_one h₁ hcard]
+    exact ⟨S, FoldSeqAt.refl S, hcard⟩
+  · -- there is at least one operation to perform
+    have hnpos : 1 ≤ n := by
+      rcases Nat.eq_zero_or_pos n with hn0 | hpos
+      · obtain ⟨S₁, h₁, hs₁⟩ := h
+        rw [FoldSeqAt.eq_of_zero h₁ hn0] at hs₁
+        exact absurd hs₁ hcard
+      · exact hpos
+    obtain ⟨m, hm⟩ : ∃ m, n = m + 1 := ⟨n - 1, by omega⟩
+    subst hm
+    have hcard2 : 2 ≤ S.alive.card := by omega
+    obtain ⟨P, hP0, hPlast⟩ := exists_diamPath_between S hs ht hd
+    -- a complete process from the folded state, towards `s`
+    obtain ⟨m', hm'⟩ := LValue_exists_of_isDiamEnd P.foldState.alive.card P.foldState (P.p 0)
+      le_rfl (isDiamEnd_foldState P)
+    obtain ⟨T, hT, hT1⟩ := hm'
+    have hT' : FoldSeqAt s P.foldState T m' := by rw [← hP0]; exact hT
+    have hstep : FoldStepAt s S P.foldState := ⟨P, hP0, rfl⟩
+    have hL1 : LValue S s (m' + 1) := ⟨T, FoldSeqAt.step hcard2 hstep hT', hT1⟩
+    -- Proposition 1 identifies the two lengths
+    obtain ⟨S₁, hS₁, hs₁⟩ := h
+    obtain ⟨T₁, hT₁, hT₁1⟩ := hL1
+    have huniq : m + 1 = m' + 1 :=
+      LValue_unique S.alive.card S S₁ T₁ s (m + 1) (m' + 1) le_rfl hs hS₁ hT₁ hs₁ hT₁1
+    have hmm : m' = m := by omega
+    -- fold the other way round along the same diameter
+    have hbase : LValue P.foldState (P.p 0) m := by
+      rw [← hmm]
+      exact ⟨T, hT, hT1⟩
+    have hrev : LValue P.reverse.foldState (P.p P.last) m := (lValue_foldState_reverse P m).mp hbase
+    obtain ⟨T₂, hT₂, hT₂1⟩ := hrev
+    have hT₂' : FoldSeqAt t P.reverse.foldState T₂ m := by rw [← hPlast]; exact hT₂
+    have hrevStep : FoldStepAt t S P.reverse.foldState :=
+      ⟨P.reverse, by rw [DiamPath.reverse_p_zero, hPlast], rfl⟩
+    exact ⟨T₂, FoldSeqAt.step hcard2 hrevStep hT₂', hT₂1⟩
+
 /-- REF.md Proposition 2 (§10): the number of operations of the fixed-endpoint process does not
 depend on which diameter endpoint was fixed.  (`REF.md` proves this from Lemma 7: two diameter
 endpoints `a`, `b` either are at distance `diam` from each other, or have a common "opposite"
@@ -50,7 +138,10 @@ diameter endpoint `c`; in both cases the fixed-endpoint process from `a` can be 
 one from `b`.) -/
 theorem LValue_endpoint_independent {S : TreeState V} {s t : V} {n : ℕ}
     (hs : IsDiamEnd S s) (ht : IsDiamEnd S t) (h : LValue S s n) : LValue S t n := by
-  sorry
+  rcases exists_common_opposite hs ht with hd | ⟨c, hc, hac, hbc⟩
+  · exact LValue_of_dist_eq_diam hs ht hd h
+  · exact LValue_of_dist_eq_diam hc ht (by rw [SimpleGraph.dist_comm]; exact hbc)
+      (LValue_of_dist_eq_diam hs hc hac h)
 
 /-! ## The value is realised by the fixed-endpoint process -/
 

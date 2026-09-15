@@ -74,7 +74,7 @@ The assembly is complete and mirrors `REF.md` §11–13:
 | §8 Prop. 1 | the fixed-endpoint process has a choice-independent length | `LValue_unique` | **proved** from Lemma 3 and Lemma 5 |
 | §9 Lemma 6 | `ecc x = max (d x u) (d x v)` for a diameter `u v` | `dist_le_max_dist_ends` | **proved** |
 | §10 Lemma 7 | two diameter endpoints have a common opposite | `exists_common_opposite` | **proved** from Lemma 6 |
-| §10 Prop. 2 | all diameter endpoints give the same value | `LValue_endpoint_independent` | **gap** (its two ingredients are now proved: Lemma 7, and the isomorphism invariance of the process in `Iso.lean`, including `lValue_foldState_reverse`, the formal counterpart of "folding towards the two ends of a diameter gives the same quotient tree") |
+| §10 Prop. 2 | all diameter endpoints give the same value | `LValue_endpoint_independent` | **proved** (from Lemma 7; the case `d (s,t) = diam` folds along the common diameter in the two directions using `lValue_foldState_reverse` — the formal counterpart of "folding towards the two ends of a diameter gives the same quotient tree" — identifies the two lengths by Proposition 1, and the remaining case is reduced by Lemma 7) |
 | §11–12 Prop. 3 | one operation decreases the value by exactly one | `Phi_step` | **proved** from Prop. 1, Prop. 2 and Lemma 3 |
 | §13 | conclusion | `fold_count_unique` | **proved** |
 
@@ -86,51 +86,25 @@ there (`exists_diamPath_at`).
 
 ## What is left, precisely
 
-Two declarations still contain a `sorry`; they are exactly the mathematical content of `REF.md`
-that is not yet formalized:
+One declaration still contains a `sorry`, the single hard statement of the development:
 
-1. `exchange` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 5, the delayed exchange lemma: the two
-   folds towards `s` along two different diameters differ only inside a ball around the branching
-   point of the two diameters, and that ball is destroyed by the first few further folds.
-2. `LValue_endpoint_independent` (`OhtoaiTreeProof/MainTheorem.lean`) — Proposition 2.  Every
-   ingredient is now proved: Lemma 7 (`exists_common_opposite`), Lemma 3, and the isomorphism
-   invariance of the process (`Iso.lean`), whose `lValue_foldState_reverse` is precisely `REF.md`'s
-   statement that folding along the same diameter towards its two ends gives the same quotient
-   tree — formalized as invariance under the mirror permutation `p i ↦ p (D - i)`, which is what
-   `REF.md` leaves implicit here.  What remains is the assembly: decomposing `LValue S s (n+1)`
-   into a first fold plus a strategy from the folded tree (using Proposition 1), and applying
-   Lemma 7 to reduce `d (s,t) < diam` to `d (s,t) = diam`.
+1. `exchange` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 5, the delayed exchange lemma: folding
+   towards the same endpoint `s` along two different diameters leads to two states which admit
+   complete processes towards `s` of the same length.  `REF.md` §7 proves it by comparing the two
+   diameters: they share a prefix `s … w` and then split into two tails of equal length `r`; the
+   `t`-th vertex of each tail is identified with the same vertex of the prefix, so the two folded
+   trees agree outside the ball of radius `r` around `w`, and `r` further folds towards `s` erase
+   that ball, after which the two processes can be continued identically.  This is the only place
+   where the argument needs global geometry of the tree, and it is the sole remaining gap; every
+   other statement of `REF.md` (including Propositions 1, 2, 3 and the main theorem) is proved
+   from it.
 
-Every state of the process is now *proved* to be a tree (`DiamPath.foldGraph_isAcyclic`, `REF.md`
-§2), so the only assumptions left in the development are the two statements above.
+Every state of the process is proved to be a tree (`DiamPath.foldGraph_isAcyclic`, `REF.md` §2), and
+the only assumption left in the development is the statement above.
 
-## Building
-
-The project uses `leanprover/lean4:v4.34.0` and Mathlib (already present in `.lake/packages`).
-
-```sh
-lake build                      # builds the library and the `ohtoai-tree-proof` executable
-lake build OhtoaiTreeProof      # builds the library only
-```
-
-`Main.lean` prints a short description of the formalized statement.  The module layout follows the
-proof: `Basic.lean` (states, diameters, folding, and the counting argument of §2),
-`Progress.lean` (folding decreases the number of vertices), `PathExists.lean` (a diameter starting
-at a given endpoint), `Diameter.lean` (the metric lemmas about a diameter: `REF.md` Lemmas 1, 6
-and 7), `Cone.lean` (`REF.md` Lemmas 2 and 3: the cone lemma and the fact that folding towards an
-endpoint keeps it a diameter endpoint), `Exchange.lean` (`REF.md` Lemma 5, and the derivation of
-Proposition 1 and of `Phi_exists` from Lemmas 3 and 5), `Iso.lean` (isomorphism invariance of the
-process: `StateIso`, transport of diameters and folds, `lValue_foldState_reverse`), and
-`MainTheorem.lean` (the value `Phi`, the propositions, and the main theorem)., `Progress.lean` (folding decreases the number of vertices),
-`PathExists.lean` (a diameter starting at a given endpoint), `Diameter.lean` (the metric lemmas
-about a diameter: `REF.md` Lemmas 1, 6 and 7), `Exchange.lean` (`REF.md` Lemmas 3 and 5, and the
-derivation of Proposition 1 and of `Phi_exists`), `Iso.lean` (isomorphism invariance of the
-process: `StateIso`, transport of diameters and folds, and `lValue_foldState_reverse`), and
-`MainTheorem.lean` (the value `Phi`, the propositions, and the main theorem).
-
-Everything except the two `sorry`s above is checked by Lean: `#print axioms
+Everything except the `sorry` above is checked by Lean: `#print axioms
 OhtoaiTreeProof.fold_count_unique` reports only `propext`, `Classical.choice` and `Quot.sound`
-besides the `sorryAx` contributed by the two open statements, and
+besides the `sorryAx` contributed by `exchange` (through Proposition 1), and
 `#print axioms OhtoaiTreeProof.DiamPath.foldGraph_isAcyclic` reports no `sorryAx` at all.  The development was also checked
 against the computational experiments in `research/verify_invariance.py` (exhaustive over all
 labelled trees with at most 8 vertices, plus random trees up to 14 vertices): every complete

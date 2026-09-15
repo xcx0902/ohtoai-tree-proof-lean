@@ -18,7 +18,8 @@ The main pieces are
   (`StateIso.foldStepAt`, `StateIso.foldSeqAt`, `StateIso.lValue_iff`) (part 2);
 * the reversed diameter and `exists_stateIso_foldState_reverse` (part 3).
 -/
-import OhtoaiTreeProof.Exchange
+import OhtoaiTreeProof.Cone
+import OhtoaiTreeProof.PathExists
 
 set_option linter.unusedSectionVars false
 

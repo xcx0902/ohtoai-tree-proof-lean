@@ -1,1383 +1,891 @@
-# 证明折叠次数固定
+# The Number of Diameter Folds Is Independent of All Choices
 
-> Ohto Ai 有一棵包含 N 个顶点的无根树。设当前树为  G=(V,E)。
->
-> 树中的一条路径是一个由互不相同的顶点组成的序列 v_1,v_2,\ldots,v_k，使得对于每个   1\le i< k，都有  \{v_i,v_{i+1}\}\in E。
->
-> 树的直径是包含尽可能多顶点的一条路径。
->
-> 当  |V|>1 时，Ohto Ai 可以执行以下折叠操作：选择当前树的任意一条直径 d_1,d_2,\ldots,d_k，按从一个端点到另一个端点的顺序列出。
->
-> 定义一个函数   f:V\to V：
->
-> 如果
-> 对于某个
-> 否则
-> f(v)=
-> \begin{cases}
-> d_{\min\{i,k-i+1\}}, & \text{如果 }v=d_i\text{ 对于某个 }1\le i\le k\\
-> v, & \text{否则}
-> \end{cases}
-> 折叠后的树为  G'=(V',E')，其中：
->
-> \begin{aligned}
-> V'&=\{f(v)\mid v\in V\} \\
-> E'&=
-> \bigl\{
-> \{f(u),f(v)\}
-> \mid
-> \{u,v\}\in E,\ f(u)\ne f(v)
-> \bigr\}
-> \end{aligned}
-> 换句话说，所选直径上处于对称位置的顶点会被合并。两个端点被合并到同一个顶点的边会消失，如果多条边变成同一对顶点之间的边，则只保留一条。
->
-> 可以证明，G' 仍然是一棵树。
->
-> Ohto Ai 重复执行折叠操作，直到  |V|=1。
->
-> 证明：对于一个确定的初始树G，无论每次折叠操作选择的是哪个直径，执行的操作此数固定。
->
-> 给出详细、严谨的推导步骤，不要省略任何中间引理及证明。
+## Statement and Conventions
 
-我先把这个操作抽象成一个“每次都让某个树参数恰好减 1”的过程；一旦找到这样的参数，选择不同直径也不会影响总次数。关键在于先弄清折叠对整棵树的距离结构到底做了什么，而不仅仅是看顶点数或直径长度。
-
-已经找到一个很有力的结构：把树看成以“中心”（一个顶点或一条中心边）为基准，任一直径都是两条等长的最深路径拼起来；一次折叠就是把这两条最深路径逐层“拉链式合并”。证明的核心可以转化成一个局部交换律：从同一棵树选两条不同直径先折，两个结果要么本来就同构，要么再各折一次就到达同一棵树。这样就能用归纳严格推出所有完整折叠序列长度相同。
-
-可以。下面给出一个完全自洽的证明。核心不是去猜一个显式公式，而是构造一个只依赖于当前树的整数势能 $\Phi(T)$，并证明**任意一次合法折叠都使 $\Phi$ 恰好减少 $1$**。这样结论立即成立。
-
-为避免“路径有多少个顶点”和“有多少条边”反复出现，下面统一把树的直径长度记为边数。也就是说，如果直径为
-$$
-
-d_0,d_1,\ldots,d_D,
+Let $T=(V,E)$ be a finite, nonempty, undirected simple tree. A path has no repeated vertices, and its length is its number of edges. Write
 
 $$
-则它有 $D+1$ 个顶点、$D$ 条边。
-
----
-
-# 1. 折叠等价于一个商操作
-
-给定一条直径
+d_T(u,v)=\text{the length of the unique path from }u\text{ to }v,
+\qquad
+D(T)=\max_{u,v\in V}d_T(u,v).
 $$
 
+A **diameter path** is a path of length $D(T)$. A vertex $s$ is a **diameter endpoint** if some vertex $x$ satisfies $d_T(s,x)=D(T)$. Equivalently, its eccentricity
+
+$$
+\operatorname{ecc}_T(s)=\max_{v\in V}d_T(s,v)
+$$
+
+equals $D(T)$. A one-vertex tree has diameter zero, and its vertex is a diameter endpoint.
+
+When $|V|>1$, choose any diameter path, in either orientation,
+
+$$
 P=(d_0,d_1,\ldots,d_D),
-
-$$
-一次从 $d_0$ 方向折叠会把
-$$
-
-d_i,\ d_{D-i}
-
-$$
-识别成同一个顶点。
-
-因此真正重要的不是保留 $d_i$ 还是保留 $d_{D-i}$ 这个名字，而是等价关系
-$$
-
-d_i\sim d_{D-i}\qquad(0\le i\le D).
-
-$$
-
-所以：
-
-**事实 1.** 把同一条直径反向列出，得到的折叠树与原来 canonically 同构。
-
-换句话说，我们可以随意说“把这条直径向某个端点 $s$ 折叠”，而不必担心方向问题。
-
-还有一个以后会反复使用的商关系事实。
-
-**事实 2.** 如果先进行一批顶点识别，再在商树上继续识别一些商点，那么最终结果等价于在原树上把这两批识别关系全部加入，再取传递闭包。
-
-因此，如果两个折叠过程最终在原顶点集上产生相同的等价关系，那么它们得到的最终树必然同构。
-
----
-
-# 2. 折叠之后确实仍是树
-
-虽然题目已经说明这一点，下面顺便证明。
-
-商图显然连通，因为原树连通，而把顶点识别不会破坏连通性。
-
-只要证明
-$$
-
-|E'|=|V'|-1
-
-$$
-即可。
-
-若 $D=2r$，则直径上原有 $2r+1$ 个顶点，折叠后剩
-$$
-
-r+1
-
-$$
-个，所以顶点数减少 $r$。
-
-直径上的 $2r$ 条边两两对称地合并，留下 $r$ 条，因此边数也减少 $r$。
-
-若 $D=2r+1$，直径上原有 $2r+2$ 个顶点，折叠后剩 $r+1$ 个，所以顶点数减少 $r+1$。中央那一条边被压成环而消失，其余 $2r$ 条边两两合并成 $r$ 条，因此边数同样减少
-$$
-
-(2r+1)-r=r+1.
-
-$$
-
-直径外的边不会出现额外消失：树中一个不在 $P$ 上的顶点不可能同时连接 $P$ 上两个不同顶点，否则形成环。因此边数和顶点数减少量完全相同。
-
-原树满足 $|E|=|V|-1$，所以折叠后仍满足
-$$
-
-|E'|=|V'|-1.
-
-$$
-再结合连通性，$G'$ 仍是树。
-
-特别地，只要 $|V|>1$，一次折叠至少把两个直径端点合并，所以顶点数严格减少，整个过程一定有限终止。
-
----
-
-# 3. 直径旁边的支链不能太长
-
-这是整个证明中最基本的距离引理。
-
-## 引理 1
-
-设
-$$
-
-P=(p_0,p_1,\ldots,p_D)
-
-$$
-是一条直径。
-
-若某个不在 $P$ 上的顶点 $u$ 所在的分支连接到 $P$ 的 $p_i$，并且
-$$
-
-h=d(u,p_i),
-
-$$
-则
-$$
-
-\boxed{h\le \min(i,D-i)}.
-
-$$
-
-### 证明
-
-由于树无环，$u$ 所在的 $P$ 外连通块只能通过一个顶点 $p_i$ 接到 $P$ 上。
-
-于是从 $u$ 到两端点 $p_0,p_D$ 的距离分别为
-$$
-
-d(u,p_0)=h+i,
-
-$$
-以及
-$$
-
-d(u,p_D)=h+D-i.
-
-$$
-
-因为 $P$ 是直径，任何两点距离均不超过 $D$，故
-$$
-
-h+i\le D,\qquad h+D-i\le D.
-
-$$
-
-第二个不等式给
-$$
-
-h\le i,
-
+\qquad D=D(T).
 $$
-第一个给
-$$
-
-h\le D-i.
 
-$$
+Define the folding map
 
-所以
 $$
-
-h\le\min(i,D-i).
-
+f_P(v)=
+\begin{cases}
+d_{\min\{i,D-i\}},&v=d_i\text{ for some }0\le i\le D,\\
+v,&v\notin V(P).
+\end{cases}
 $$
-证毕。
-
-这个不等式的直观含义是：越靠近直径端点，允许挂在直径旁边的支链越短，否则就可以从这条支链走到另一个直径端点，构造出更长路径。
-
----
-
-# 4. 一个“锥形树”引理
 
-下面这个小引理将用来证明“固定一个直径端点向它折叠后，它仍然是直径端点”。
+The resulting simple graph is $F_P(T)=(V',E')$, where
 
-## 引理 2
-
-设树 $H$ 中有一条路径
 $$
-
-q_0,q_1,\ldots,q_m.
-
+V'=f_P(V),
+\qquad
+E'=
+\bigl\{
+\{f_P(u),f_P(v)\}:
+\{u,v\}\in E,\ f_P(u)\ne f_P(v)
+\bigr\}.
 $$
 
-删掉这条路径的边以后，假设挂在 $q_i$ 上的每一个连通块中的任意顶点 $x$ 都满足
-$$
+Thus mirror vertices of the diameter are identified, loops are discarded, and repeated edges are retained only once. We will prove that $F_P(T)$ is again a tree.
 
-d(x,q_i)\le i.
+The same formula defines $F_P(T)=T$ when $T$ is a singleton and $D=0$, but this identity is not counted as a legal operation. Folding **toward** the first endpoint means using the representative convention in the displayed definition.
 
-$$
+A **complete folding process** repeatedly performs this operation while more than one vertex remains, and stops at one vertex. No fold is allowed from a singleton.
 
-那么 $q_0$ 是 $H$ 的一个直径端点。
+**Theorem.** Every complete folding process starting from a fixed tree $T$ has the same number of operations, independently of all choices of diameter paths and orientations.
 
-### 证明
+The proof first fixes one diameter endpoint and proves a delayed exchange lemma for folds toward that endpoint. This makes the fixed-endpoint process have a well-defined length. We then show that this length is independent of the endpoint and decreases by exactly one under every legal fold.
 
-任取两个顶点 $x,y$。
+> **Note on the corrected argument.** Immediate exchange is not valid in general: two first-fold results need not be isomorphic, and one further fold on each side need not make them isomorphic. Section 7 proves the required delayed exchange instead; Appendix A gives a counterexample to immediate exchange. The proof also explicitly establishes equal diameters, preservation of the common paths, and equality of the final quotient maps. A bound on the distances of the differing vertices alone would not establish these facts.
 
-设 $x$ 所在部分挂在 $q_i$，
-$$
+## 1. Quotients, Labels, and Composition
 
-a=d(x,q_i),
+### 1.1 Elementary Path Facts
 
-$$
-而 $y$ 所在部分挂在 $q_j$，
-$$
+A connected graph contains a path between any two vertices: start with a walk and remove portions between repeated vertices. In a tree that path is unique, since two different paths between the same endpoints would contain a cycle.
 
-b=d(y,q_j).
+Consequently, every path in a tree is a shortest path between its endpoints. Every subpath is also the unique path between its endpoints. These facts will justify the distance computations below.
 
-$$
+In a finite tree with at least two vertices, an endpoint of a longest path has degree one. Otherwise an additional neighbor would either extend the path or create a cycle. Thus every diameter has leaves as its endpoints. Deleting a leaf and its incident edge leaves a tree, so induction on the number of vertices also gives the familiar identity $|E|=|V|-1$.
 
-于是
-$$
+### 1.2 Folding as a Quotient
 
-a\le i,\qquad b\le j.
+The fibers of $f_P$ are exactly the classes of the equivalence relation generated by
 
 $$
-
-不妨设 $i<j$。此时从 $x$ 到 $y$ 必经
+d_i\sim d_{D-i}
+\qquad(0\le i\le D);
 $$
 
-q_i,q_{i+1},\ldots,q_j,
+vertices outside $P$ form singleton classes. Indeed, the two indices $i$ and $D-i$ have the same minimum with their mirrors, and these are the only indices with that value. The central vertex, when $D$ is even, is a singleton class.
 
-$$
-故
-$$
+Also,
 
-d(x,y)=a+(j-i)+b.
-
 $$
-因为 $a\le i$，所以
+f_P(f_P(v))=f_P(v).
 $$
 
-d(x,y)
-\le i+(j-i)+b
-=j+b
-=d(q_0,y).
+To see this, an image vertex on $P$ has index $j\le\lfloor D/2\rfloor$, so $\min(j,D-j)=j$; an image outside $P$ is fixed by definition. Therefore a label $v\in V$ survives precisely when $f_P(v)=v$.
 
-$$
+Reversing $P$ changes the chosen representatives but not the equivalence classes or the quotient edges. The two resulting graphs are canonically isomorphic: send a representative in one graph to the representative of the same class in the other. Under this isomorphism, the retained first endpoint on one side corresponds to the retained first endpoint on the other, since both represent the class containing the two original endpoints.
 
-若 $i=j$，即使 $x,y$ 位于同一个挂接连通块内，也有
-$$
+### 1.3 Composition of Graph Images
 
-d(x,y)\le a+b.
+For any map $f$ on the vertices of a graph $G$, use $f(G)$ to denote the simple graph whose vertices and edges are the images defined as in the statement. If $g$ is a map on the resulting vertices, then
 
 $$
-又因为
+g(f(G))=(g\circ f)(G).
 $$
-
-\min(a,b)\le i,
 
-$$
-所以
-$$
+The vertex sets are plainly equal. For edges, an original edge $\{u,v\}$ contributes to the right-hand side precisely when $g(f(u))\ne g(f(v))$. This inequality implies $f(u)\ne f(v)$, so the edge survives the first image and then contributes to the second. Conversely, every edge in the iterated image has such an original edge as a witness. Edges discarded as loops cannot become nonloops later, and discarding duplicate edges loses no possible final edge.
 
-a+b
-\le i+\max(a,b)
-=\max\{d(q_0,x),d(q_0,y)\}.
+It follows by induction that a sequence of folds is described by its composite map on the original vertices. In particular, equal composite maps give exactly equal final vertex sets and edge sets, not merely graphs of the same size.
 
-$$
+When keeping the original labels throughout a process, extend each folding map by the identity on labels no longer present. Restricted to the current vertex set, each folding map is a retraction onto its surviving vertex set, and that set is a subset of the preceding vertex set.
 
-因此，对任意 $x,y$，都有
-$$
+### 1.4 Distances Do Not Increase Under Folding
 
-d(x,y)
-\le
-\max\{d(q_0,x),d(q_0,y)\}.
+The image of a path under a folding map is a walk after consecutive repetitions are removed. Its length is no greater than the original path length. Hence
 
 $$
-
-取全树最大值得
+d_{F_P(T)}(f_P(u),f_P(v))\le d_T(u,v).
 $$
-
-\operatorname{diam}(H)
-\le\operatorname{ecc}_H(q_0).
 
-$$
+The same observation proves that the image graph is connected. The inequality does not assert that distances between surviving vertices stay unchanged.
 
-另一方面任何顶点的离心率都不可能超过直径，所以
-$$
+### 1.5 Invariance Under Relabeling
 
-\operatorname{ecc}_H(q_0)
-\le\operatorname{diam}(H).
+A graph isomorphism $\theta:T\to\widetilde T$ preserves paths, their lengths, and diameter paths. If $\theta(P)$ is the image path in the same orientation, then
 
 $$
-
-于是
+\theta(f_P(v))=f_{\theta(P)}(\theta(v)).
 $$
 
-\operatorname{ecc}_H(q_0)=\operatorname{diam}(H).
+For a path vertex this follows from its unchanged index and mirror index; off the path both folding maps are the identity. Thus $\theta$ restricts to an isomorphism of the folded graphs. If it sends $s$ to $s'$, a fold toward $s$ is transported to a fold toward $s'$. Iterating, and using the inverse isomorphism for the reverse correspondence, gives a length-preserving correspondence between complete processes, including those constrained to use a fixed endpoint.
 
-$$
+Thus names of vertices never affect the possible process lengths. Later, after fixed-endpoint uniqueness has been proved, this will imply that its value is invariant under rooted isomorphism.
 
-所以从 $q_0$ 到它的任一最远点都是一条直径，$q_0$ 是直径端点。证毕。
+## 2. A Fold Produces a Smaller Tree
 
----
+We first describe how a tree is attached to a path.
 
-# 5. 固定一个直径端点向它折，端点永远不会失去“直径端点”身份
+**Path attachment fact.** Let $P=(p_0,\ldots,p_D)$ be a path in a tree $T$. Delete the edges of $P$, but retain all vertices. The resulting connected components $B_0,\ldots,B_D$ can be indexed so that $B_i$ contains exactly the path vertex $p_i$.
 
-这是后面的关键基础。
+**Proof.** Every vertex is connected to some path vertex without using a path edge: follow its path to $p_0$ and stop when it first meets $P$. A component cannot contain two distinct path vertices, because a path between them using no edge of $P$, together with their path inside $P$, would contradict uniqueness of paths. This proves the assertion.
 
-## 引理 3
+Each $B_i$ is a tree rooted at $p_i$. If $v\in B_i$ and $h=d_T(v,p_i)$, then for every $j$,
 
-设 $s=p_0$ 是树 $T$ 的一个直径端点，
 $$
-
-P=(p_0=s,p_1,\ldots,p_D=x)
-
+d_T(v,p_j)=h+|i-j|.
 $$
-是一条以 $s$ 为端点的直径。
 
-把 $P$ 向 $s$ 折叠，得到 $T'$。
+For vertices in different components, their unique path passes through the two attachment vertices and the intervening part of $P$.
 
-那么 $s$ 在 $T'$ 中仍是一个直径端点。
+Now take $P$ to be the chosen diameter and put
 
-### 证明
-
-令
 $$
-
 m=\left\lfloor\frac D2\right\rfloor.
-
-$$
-
-折叠后，直径留下的“半条路径”是
-$$
-
-q_0=s,q_1,\ldots,q_m,
-
-$$
-其中
-$$
-
-q_j
-
-$$
-表示原来的 $p_j,p_{D-j}$ 的等价类。
-
-考虑现在挂在 $q_j$ 上的任意一个分支。
-
-它在原树中一定来自以下两类之一：
-
-原来挂在 $p_j$ 上的分支；
-
-或者原来挂在 $p_{D-j}$ 上的分支。
-
-由引理 1：
-
-挂在 $p_j$ 上的分支高度至多
-$$
-
-\min(j,D-j)=j,
-
-$$
-因为 $j\le D/2$。
-
-挂在 $p_{D-j}$ 上的分支高度也至多
-$$
-
-\min(D-j,j)=j.
-
-$$
-
-折叠只移动挂接点，并没有改变这些分支内部距离。
-
-所以在 $T'$ 中，挂在 $q_j$ 上的任意顶点距 $q_j$ 都至多 $j$。
-
-现在完全满足引理 2 的条件。
-
-故
-$$
-
-s=q_0
-
-$$
-在 $T'$ 中仍是直径端点。证毕。
-
-因此我们可以定义一种特殊的折法：
-
-> 固定一个初始直径端点 $s$，以后每次都选择一条以 $s$ 为端点的直径，并且始终向 $s$ 折。
-
-引理 3 保证这个规则可以一直执行到只剩一个顶点。
-
----
-
-# 6. 两个不同的最远点之间有什么关系
-
-把树根定在直径端点 $s$。
-
-设当前直径长度为 $D$。因为 $s$ 是直径端点，所以
-$$
-
-\max_v d(s,v)=D.
-
-$$
-
-因此所有满足
-$$
-
-d(s,x)=D
-
-$$
-的 $x$，都可以和 $s$ 构成一条直径。
-
-取两个这样的不同顶点 $x,y$。
-
-记它们从 $s$ 出发的两条路径最后一个公共顶点为 $w$，即
-$$
-
-w=\operatorname{LCA}_s(x,y).
-
-$$
-
-令
-$$
-
-\ell=d(s,w),\qquad r=D-\ell.
-
-$$
-
-那么
-$$
-
-d(w,x)=d(w,y)=r.
-
-$$
-
-## 引理 4
-
-有
-$$
-
-\boxed{2r\le D}.
-
-$$
-
-### 证明
-
-$x-w-y$ 是 $x$ 与 $y$ 之间的唯一路径，长度为
-$$
-
-d(x,y)=r+r=2r.
-
-$$
-
-而 $D$ 是树的直径，所以
-$$
-
-d(x,y)\le D.
-
-$$
-
-因此
-$$
-
-2r\le D.
-
-$$
-等价地，
-$$
-
-\ell\ge \frac D2.
-
-$$
-证毕。
-
-这句话非常重要：两个从 $s$ 看都是最远点的顶点，只可能在整条直径的“后半段”才分叉。
-
----
-
-# 7. 最关键的交换引理：先折 $x$ 或先折 $y$，差异会在较小尺度上消失
-
-这是证明“固定端点策略次数唯一”的核心。
-
-记
-$$
-
-T_x=\text{沿 }s\!-\!x\text{ 向 }s\text{ 折后的树},
-
-$$
-$$
-
-T_y=\text{沿 }s\!-\!y\text{ 向 }s\text{ 折后的树}.
-
-$$
-
-## 引理 5（延迟交换引理）
-
-从 $T_x$ 和 $T_y$ 出发，都继续只向 $s$ 折。
-
-存在同样多次的后续合法折叠，使两棵树最终到达同一棵根树。
-
-### 证明
-
-把公共路径写成
-$$
-
-p_0=s,p_1,\ldots,p_\ell=w.
-
-$$
-
-把 $w$ 到 $x$、$y$ 的两条尾巴写成
-$$
-
-w=a_0,a_1,\ldots,a_r=x,
-
-$$
-以及
-$$
-
-w=b_0,b_1,\ldots,b_r=y.
-
-$$
-
-因为
-$$
-
-\ell=D-r,
-
-$$
-所以 $a_t$ 在原来的 $s-x$ 直径上深度为
-$$
-
-\ell+t=D-r+t.
-
-$$
-
-沿 $s-x$ 向 $s$ 折时，它被映射到深度
-$$
-
-D-(D-r+t)=r-t
-
-$$
-的位置，即
-$$
-
-\boxed{a_t\longmapsto p_{r-t}}.
-
-$$
-
-同理，若先沿 $s-y$ 折，则
-$$
-
-\boxed{b_t\longmapsto p_{r-t}}.
-
-$$
-
-也就是说：
-
-在 $T_x$ 中，$x$ 那条尾巴已经逐层铺到了
-$$
-
-p_0,p_1,\ldots,p_r
-
-$$
-上，而 $y$ 的尾巴还保留；
-
-在 $T_y$ 中，情况完全相反。
-
-现在看未被折的那条尾巴。例如在 $T_x$ 中，$y$ 的尾巴从 $p_r$ 接出去，长度为 $r$，所以
-$$
-
-d_{T_x}(s,y)=r+r=2r.
-
-$$
-同理
-$$
-
-d_{T_y}(s,x)=2r.
-
-$$
-
-接下来要说明，两棵树的一切差异都只能出现在距 $s$ 不超过 $2r$ 的区域。
-
-以 $x$-尾巴上的 $a_t$ 为例。如果有某个分支从 $a_t$ 挂出去，取其中顶点 $z$，令
-$$
-
-h=d(z,a_t).
-
-$$
-
-因为 $a_t$ 位于原直径 $s-x$ 上，而且它到 $x$ 的距离为
-$$
-
-r-t,
-
-$$
-由引理 1，
-$$
-
-h\le r-t.
-
-$$
-
-在 $T_x$ 中，
-$$
-
-a_t
-
-$$
-被移到深度 $r-t$，故
-$$
-
-d(s,z)\le(r-t)+h\le2(r-t)\le2r.
-
-$$
-
-而在 $T_y$ 中，这条 $x$-尾巴整体从新的 $p_r$ 向外延伸，所以 $a_t$ 深度为
-$$
-
-r+t.
-
-$$
-于是
-$$
-
-d(s,z)\le r+t+h
-\le r+t+(r-t)
-=2r.
-
-$$
-
-$y$-尾巴完全同理。
-
-因此：
-
-$$
-
-\boxed{\text{$T_x,T_y$ 的所有不同之处都位于距 $s$ 至多 $2r$ 的区域。}}
-
-$$
-
-而所有距离 $>2r$ 的顶点及通往它们的路径，在两棵树中完全相同。
-
-现在假设当前直径长度
-$$
-
-H>2r.
-
-$$
-
-由引理 3，$s$ 仍是直径端点。因此可以选择一个距 $s$ 为 $H$ 的最远点 $z$。
-
-因为
-$$
-
-H>2r,
-
-$$
-这个 $z$ 不可能位于刚才的“差异区域”中，所以同一个 $z$ 在另一棵树中也是最远点，且
-$$
-
-s-z
-
-$$
-这条直径在两棵树的公共部分完全相同。
-
-于是我们可以在两棵树中同时沿 $s-z$ 向 $s$ 折。
-
-更重要的是，因为
-$$
-
-H>2r,
-
-$$
-有
-$$
-
-r\le\left\lfloor\frac H2\right\rfloor.
-
 $$
 
-所以这次折叠不会移动
-$$
-
-p_0,p_1,\ldots,p_r.
-
-$$
-而两条产生差异的尾巴都挂在这段路径以内，也不会成为这条长度 $H$ 的直径的后半段。
-
-因此这次同步折叠：
-
-只改变两棵树中原本就相同的部分；
-
-对差异部分什么也不做。
-
-所以折完后仍保持同样的结构关系。
-
-只要当前直径仍 $>2r$，就继续这样同步折。
-
-因为每次折叠顶点数严格减少，这个过程不可能无限继续。
-
-最终某时当前直径不再大于 $2r$。
-
-另一方面，在 $T_x$ 一侧，顶点 $y$ 始终没有被上述折叠触碰，仍满足
-$$
-
-d(s,y)=2r.
-
-$$
-所以直径不可能小于 $2r$。
+Its image is the path
 
-因此此时直径必定恰好等于
 $$
-
-2r.
-
-$$
-
-于是，在 $T_x$ 中，
-$$
-
-s-y
-
-$$
-是一条直径；在 $T_y$ 中，
+p_0,p_1,\ldots,p_m.
 $$
 
-s-x
+The fold leaves each rooted tree $B_i$ intact except for replacing its root label by $p_{\min(i,D-i)}$. Distinct such trees can meet only at a newly shared root; their other vertices remain distinct. They are therefore trees attached to a single backbone path, each at exactly one vertex.
 
-$$
-是一条直径。
-
-现在各再折一次：
-
-在 $T_x$ 中折 $s-y$；
-
-在 $T_y$ 中折 $s-x$。
+This graph is connected and has no cycle. A cycle cannot lie within one attached tree or within the backbone. Nor can it enter an attached tree and leave it elsewhere, since that tree has only one attachment vertex. Thus $F_P(T)$ is a tree.
 
-前者会补上
-$$
-
-b_t\sim p_{r-t},
+The counts make the amount of progress explicit. Let
 
 $$
-后者会补上
+b_i=|V(B_i)|-1
 $$
 
-a_t\sim p_{r-t}.
+be the number of nonroot vertices of $B_i$. Before folding,
 
 $$
-
-而第一步折叠已经分别给出了另一组关系。因此两边最终都有
-$$
-
-a_t\sim p_{r-t},
+|V(T)|=D+1+\sum_{i=0}^D b_i,
 \qquad
-b_t\sim p_{r-t}
-\qquad(0\le t\le r).
-
+|E(T)|=D+\sum_{i=0}^D b_i.
 $$
 
-中间所有同步折叠又完全相同。
-
-根据第 1 节的商关系事实，两边最终产生完全相同的等价关系，因此到达同一棵商树。
-
-并且两边所进行的后续操作数完全相同。证毕。
-
-这就是整个问题真正的交换律：
-
-> 两种不同选择未必“一步后就同构”，但它们的差异只存在于一个更小的距离尺度；在这个尺度成为新的直径尺度之前，两边可以完全同步；一旦它成为直径，两种差异各补一次折叠，就彻底汇合。
-
----
-
-# 8. 固定直径端点 $s$ 后，折叠次数唯一
-
-现在可以正式证明第一层“不依赖选择”。
-
-## 命题 1
-
-设 $s$ 是 $T$ 的一个直径端点。
-
-规定以后每一步必须：
-
-选择某个满足
-$$
-
-d(s,x)=\operatorname{diam}(T)
+After folding,
 
 $$
-的顶点 $x$；
-
-沿直径 $s-x$ 向 $s$ 折。
-
-那么无论每一步选哪个 $x$，直到单点所需的操作次数相同。
-
-把这个次数记为
+|V(F_P(T))|=m+1+\sum_{i=0}^D b_i,
+\qquad
+|E(F_P(T))|=m+\sum_{i=0}^D b_i.
 $$
 
-L(T,s).
+No off-backbone edge disappears or duplicates another: its nonroot vertices retain their distinct labels, and each original attached tree meets the backbone at only one root. Hence both counts decrease by
 
 $$
-
-### 证明
-
-对 $|V(T)|$ 作归纳。
-
-若
+D-m=\left\lceil\frac D2\right\rceil.
 $$
 
-|V(T)|=1,
+If $D=2m$, symmetric pairs of backbone edges merge. If $D=2m+1$, the middle edge also collapses to a loop and is discarded.
+
+When $|V(T)|>1$, connectedness gives $D\ge1$, so a legal fold removes at least one vertex. The tree remains nonempty. Consequently, every folding process terminates, and any process that cannot be extended has reached a singleton.
+
+## 3. Height Bounds Beside a Diameter
+
+**Lemma 1.** Let $P=(p_0,\ldots,p_D)$ be a diameter path of $T$, and let $v\in B_i$ in the attachment decomposition of Section 2. If $h=d_T(v,p_i)$, then
 
 $$
-次数为 $0$，显然。
-
-现在假设对所有顶点数严格小于 $n$ 的树命题成立，考虑
+\boxed{h\le\min(i,D-i).}
 $$
 
-|V(T)|=n>1.
+**Proof.** The attachment fact gives
 
 $$
-
-第一步可以选不同最远点 $x,y$。
-
-折叠后得到
+d_T(v,p_0)=h+i,
+\qquad
+d_T(v,p_D)=h+D-i.
 $$
 
-T_x,T_y.
+Neither distance exceeds $D$. The first inequality implies $h\le D-i$, and the second implies $h\le i$.
+
+This includes vertices on the diameter, for which $h=0$.
+
+## 4. The Cone Tree Lemma
+
+**Lemma 2.** Let $H$ be a finite tree containing a path
 
 $$
-
-它们顶点数都小于 $n$，而根据引理 3，$s$ 在两棵树中仍是直径端点。
-
-所以由归纳假设，从 $T_x$ 出发的固定-$s$ 策略具有唯一剩余长度
+q_0,q_1,\ldots,q_m.
 $$
 
-L(T_x,s),
+In the decomposition obtained by deleting this path's edges, suppose every vertex in the component rooted at $q_i$ has distance at most $i$ from $q_i$. Then
 
 $$
-从 $T_y$ 出发也有唯一剩余长度
+d_H(x,y)\le
+\max\{d_H(q_0,x),d_H(q_0,y)\}
+\qquad(x,y\in V(H)).
 $$
 
-L(T_y,s).
+In particular, $q_0$ is a diameter endpoint.
+
+**Proof.** Let $x$ and $y$ belong to the components rooted at $q_i$ and $q_j$, and write
 
 $$
-
-另一方面，引理 5 告诉我们：从 $T_x,T_y$ 可以分别经过完全相同数量的固定-$s$ 合法操作，到达同一棵树 $U$。
-
-假设这一共同数量为 $q$。
-
-由归纳假设，
+a=d_H(x,q_i)\le i,
+\qquad
+b=d_H(y,q_j)\le j.
 $$
 
-L(T_x,s)=q+L(U,s),
+If $i<j$, the attachment fact gives
 
 $$
-同样
+d_H(x,y)=a+(j-i)+b
+\le j+b=d_H(q_0,y).
 $$
 
-L(T_y,s)=q+L(U,s).
+The case $j<i$ is symmetric. If $i=j$, the walk through $q_i$ gives
 
 $$
-
-所以
+\begin{aligned}
+d_H(x,y)
+&\le a+b\\
+&=\min(a,b)+\max(a,b)\\
+&\le i+\max(a,b)\\
+&=\max\{d_H(q_0,x),d_H(q_0,y)\}.
+\end{aligned}
 $$
 
-L(T_x,s)=L(T_y,s).
+The walk through $q_i$ need not be the unique path in this last case; only the upper bound is used.
+
+Taking the maximum over $x,y$ yields
 
 $$
-
-因此 $T$ 的第一步无论选哪个最远点，剩余次数都一样。
-
-所以
+D(H)\le\operatorname{ecc}_H(q_0).
 $$
 
-L(T,s)
+The reverse inequality follows from the definition of diameter. Since the tree is finite and nonempty, the eccentricity is attained at some vertex, so $q_0$ is a diameter endpoint.
+
+## 5. A Fixed Endpoint Remains a Diameter Endpoint
+
+**Lemma 3.** Let $P=(p_0=s,p_1,\ldots,p_D)$ be a diameter path of $T$, and fold it toward $s$. Then the surviving vertex $s$ is a diameter endpoint of $F_P(T)$.
+
+**Proof.** The surviving backbone is
 
 $$
-良定义。归纳完成。证毕。
-
----
-
-# 9. 不同直径端点 $s$ 会不会得到不同的 $L(T,s)$？
-
-还需要证明答案不依赖我们一开始固定的是哪个直径端点。
-
-先证明一个标准但这里很有用的树距离事实。
-
-## 引理 6
-
-设 $u,v$ 是某一条直径的两个端点，长度为 $D$。
-
-那么对任意顶点 $x$，
+p_0=s,p_1,\ldots,p_m,
+\qquad m=\left\lfloor\frac D2\right\rfloor.
 $$
 
+Every vertex attached at the new backbone vertex $p_j$ comes from a component formerly rooted at $p_j$ or at $p_{D-j}$. These components may now share their root, but remain otherwise disjoint. By Lemma 1, each has height at most
+
+$$
+\min(j,D-j)=j.
+$$
+
+Folding changes only its root's representative, not its internal structure. The attachment decomposition from Section 2 therefore satisfies the hypotheses of Lemma 2. Its conclusion gives the result.
+
+This includes the possibility that the fold leaves only $s$.
+
+**Existence of a fixed-endpoint completion.** If $s$ is a diameter endpoint of a finite tree, stop if the tree is a singleton; otherwise choose a diameter starting at $s$, fold toward $s$, and repeat. Lemma 3 allows another such choice whenever the current tree is not a singleton. Section 2 proves strict decrease of the number of vertices, so this procedure reaches a singleton after finitely many steps.
+
+This establishes existence only. Independence of the choices will be proved in Section 8.
+
+## 6. Two Farthest Vertices Share a Long Prefix
+
+Fix a diameter endpoint $s$ of $T$ and let $D=D(T)$. Choose vertices $x,y$ such that
+
+$$
+d_T(s,x)=d_T(s,y)=D.
+$$
+
+The paths from $s$ to $x$ and to $y$ share an initial segment and cannot meet again after separating, by uniqueness of paths. Let their last common vertex be $w$, and write
+
+$$
+\ell=d_T(s,w),
+\qquad
+r=D-\ell.
+$$
+
+Thus $d_T(w,x)=d_T(w,y)=r$.
+
+**Lemma 4.** We have
+
+$$
+\boxed{2r\le D,}
+\qquad\text{and hence}\qquad
+r\le\left\lfloor\frac D2\right\rfloor\le\ell.
+$$
+
+**Proof.** If $x=y$, then $r=0$ and the inequalities follow. Otherwise the two tails after $w$ are disjoint, so their concatenation is the unique path from $x$ to $y$. It has length $2r$, which cannot exceed the diameter $D$.
+
+Since $D=\ell+r$, the inequality $2r\le D$ gives $r\le\ell$ and $\ell\ge\lceil D/2\rceil$, proving the displayed consequences.
+
+## 7. The Delayed Exchange Lemma
+
+**Lemma 5.** Let $P$ and $Q$ be diameter paths of $T$ starting at the same endpoint $s$, with respective other endpoints $x,y$. Let
+
+$$
+T_x=F_P(T),
+\qquad
+T_y=F_Q(T),
+$$
+
+where both folds are toward $s$. There exist an integer $k\ge0$ and a rooted tree $(U,s)$ such that each of $T_x$ and $T_y$ can reach $U$ by exactly $k$ legal folds toward $s$.
+
+Consequently, the two first-fold results admit complete fixed-endpoint processes of the same length.
+
+### 7.1 Labels and the Two Legs
+
+Use the notation of Section 6. If $r=0$, the diameter paths coincide, so their folding maps and resulting labeled trees coincide. Take $k=0$ and $U=T_x=T_y$. This also covers a first fold that leaves a singleton.
+
+For the rest of this section, assume $r\ge1$. Write the paths as
+
+$$
+\begin{aligned}
+P&=(p_0=s,p_1,\ldots,p_\ell=w,a_1,\ldots,a_r=x),\\
+Q&=(p_0=s,p_1,\ldots,p_\ell=w,b_1,\ldots,b_r=y).
+\end{aligned}
+$$
+
+Let $f_x=f_P$ and $f_y=f_Q$, and define
+
+$$
+A_*=\{a_1,\ldots,a_r\},
+\qquad
+B_*=\{b_1,\ldots,b_r\}.
+$$
+
+For $0\le i\le\ell$, both folds send $p_i$ to $p_{\min(i,D-i)}$. These representatives are on the common prefix because $\lfloor D/2\rfloor\le\ell$.
+
+For $1\le t\le r$, Lemma 4 gives
+
+$$
+\begin{aligned}
+f_x(a_t)&=p_{r-t},& f_y(a_t)&=a_t,\\
+f_x(b_t)&=b_t,& f_y(b_t)&=p_{r-t}.
+\end{aligned}
+$$
+
+Indeed, the index of $a_t$ on $P$ is $\ell+t=D-r+t$, whose mirror index is $r-t$; $a_t$ is off $Q$. The same reasoning applies to $b_t$.
+
+Also,
+
+$$
+f_x(w)=f_y(w)=p_r.
+$$
+
+Both folds fix the **spine**
+
+$$
+K=(p_0,p_1,\ldots,p_r).
+$$
+
+It follows directly from the images of the corresponding original edges that
+
+$$
+\begin{aligned}
+L_x&=(p_0,p_1,\ldots,p_r,b_1,\ldots,b_r),\\
+L_y&=(p_0,p_1,\ldots,p_r,a_1,\ldots,a_r)
+\end{aligned}
+$$
+
+are paths in $T_x$ and $T_y$, respectively. Their vertices are distinct: the spine is in the common prefix, and the two tails are disjoint from that prefix. Both paths have length $2r$.
+
+Since the folded graphs are trees, these paths are geodesics. In particular,
+
+$$
+d_{T_x}(s,b_r)=d_{T_y}(s,a_r)=2r.
+$$
+
+We call them the two **legs**.
+
+### 7.2 The Fixed Difference Region and the Common Part
+
+Delete the two original edges $\{w,a_1\}$ and $\{w,b_1\}$ from $T$. Each deletion splits one component into two, since an alternative path between the endpoints would create a cycle. There are therefore exactly three components. Let $A$ and $B$ be the vertex sets of the components containing $x$ and $y$, respectively, and let $C$ be the vertex set of the remaining component, containing $s$ and the entire common prefix. Put
+
+$$
+\Delta=A\cup B,
+\qquad
+C=V(T)\setminus\Delta.
+$$
+
+Equivalently, $\Delta$ consists of the original vertices whose path from $s$ passes through $a_1$ or $b_1$. This is a fixed set of original labels, not a ball recomputed after each fold.
+
+The original path from $s$ to a vertex of $C$ lies entirely in $C$. Moreover,
+
+$$
+V(P)\cap\Delta=A_*,
+\qquad
+V(Q)\cap\Delta=B_*.
+$$
+
+The maps $f_x$ and $f_y$ agree at every vertex outside $A_*\cup B_*$. In particular, they agree on $C$ and map $C$ into itself: on the common prefix their images are still on that prefix, and other vertices of $C$ are fixed.
+
+**Agreement of surviving common vertices.** For $v\in C$, survival under either fold is equivalent to being fixed by its folding map. Since the maps agree there,
+
+$$
+V(T_x)\cap C=V(T_y)\cap C.
+$$
+
+**Agreement of common edges.** The induced graphs on this common surviving vertex set are equal. To prove this, take an edge $\{u,v\}$ of $T_x$ with $u,v\in C$, and choose an original edge $\{\alpha,\beta\}$ mapping to it.
+
+If neither $\alpha$ nor $\beta$ belongs to $A_*\cup B_*$, both maps agree on its endpoints, so the same original edge witnesses $\{u,v\}$ in $T_y$.
+
+An endpoint in $B_*$ is impossible: $f_x$ fixes that endpoint in $\Delta$, whereas both output endpoints lie in $C$. Suppose instead that an endpoint is $a_t\in A_*$. An original neighbor of $a_t$ outside $P$ belongs to $A\setminus A_*$ and is fixed by $f_x$, again giving an output endpoint in $\Delta$. Thus the other endpoint must also be on $P$. The endpoints are consecutive path vertices, and both have indices at least $\ell$. Their images are consecutive spine vertices, possibly including $p_r$, the image of $w$. Every spine edge is present in both folded trees, since both folds fix the spine.
+
+This proves one inclusion of common edge sets. Exchanging $P$ and $Q$ proves the reverse inclusion.
+
+**Common geodesics.** If a label $v\in C$ survives in $T_x$, take the original path from $s$ to $v$. It lies in $C$, and its image under $f_x$ is a walk in $C$ from $s$ to $v$. Removing repeated portions gives the unique path in $T_x$ between these vertices, still entirely in $C$. The same holds in $T_y$.
+
+Because the induced common graphs agree, this path is the same vertex sequence in both trees. Therefore
+
+$$
+d_{T_x}(s,v)=d_{T_y}(s,v)
+\qquad(v\in V(T_x)\cap C).
+$$
+
+The path argument is essential: equal induced subgraphs alone would not imply that distances measured in the whole graphs agree.
+
+### 7.3 Distance Bounds in the Difference Region
+
+Every vertex $z\in A$ is attached to $P$ at some $a_t$, with $1\le t\le r$: the path from $z$ to $a_1$ stays in $A$, so its first intersection with $P$ is in $A\cap V(P)=A_*$. Let $h=d_T(a_t,z)$. Lemma 1 gives
+
+$$
+h\le D-(\ell+t)=r-t.
+$$
+
+In $T_x$, the attachment vertex maps to $p_{r-t}$. The spine followed by the image of the attachment path gives
+
+$$
+d_{T_x}(s,f_x(z))
+\le (r-t)+h
+\le 2(r-t)
+\le 2r.
+$$
+
+In $T_y$, the whole component $A$ is unchanged except that its attachment $w$ has moved to $p_r$. Following the spine, the surviving $a$-tail, and the attachment path gives
+
+$$
+d_{T_y}(s,z)
+\le r+t+h
+\le 2r.
+$$
+
+The symmetric argument handles $z\in B$. Consequently, every surviving label in $\Delta$ has distance at most $2r$ from $s$ in either folded tree. The leg endpoints attain $2r$.
+
+This bounds distances of surviving vertices, with distances taken in the respective folded trees. It does not identify the two entire radius-$2r$ balls, or assert that all vertices within those balls are affected differently.
+
+### 7.4 The Invariant for Synchronized Folds
+
+We now continue from $T_x,T_y$ together. Let their current descendants be $U_x,U_y$, reached after the same number of additional folds. We maintain the following properties:
+
+1. Both current graphs are trees, and $s$ is a diameter endpoint of both.
+2. Their surviving vertices in $C$ coincide, and their induced graphs on those vertices coincide.
+3. In each current tree, the path from $s$ to every surviving vertex of $C$ lies entirely in $C$.
+4. Every surviving vertex of $\Delta$ has distance at most $2r$ from $s$ in each current tree.
+5. The original labeled legs $L_x$ and $L_y$ remain paths in the respective current trees.
+6. There is a common map $\sigma$ on the original labels such that
+
+$$
+U_x=(\sigma\circ f_x)(T),
+\qquad
+U_y=(\sigma\circ f_y)(T),
+$$
+
+and
+
+$$
+\sigma(v)=v\quad(v\in\Delta),
+\qquad
+\sigma(C)\subseteq C,
+\qquad
+\sigma(p_i)=p_i\quad(0\le i\le r).
+$$
+
+Initially take $U_x=T_x$, $U_y=T_y$, and $\sigma=\operatorname{id}$. Lemma 3 and Sections 7.1-7.3 establish all six properties.
+
+These properties imply equal current diameters. By properties 2 and 3, the common surviving vertices have the same paths, hence the same distances, from $s$ in the two trees. Let $M$ be their maximum distance. This maximum exists because the set is finite and contains $s$.
+
+Properties 4 and 5 show that the maximum distance of a surviving vertex in $\Delta$ is exactly $2r$: the upper bound is property 4, and the surviving leg endpoint attains it. Since $s$ is a diameter endpoint by property 1,
+
+$$
+\boxed{D(U_x)=D(U_y)=\max\{M,2r\}.}
+$$
+
+Write this common value as $H$.
+
+### 7.5 One Synchronized Step Preserves the Invariant
+
+Suppose $H>2r$. Choose a vertex $z$ at distance $H$ from $s$ in $U_x$. Property 4 implies $z\in C$. By properties 2 and 3, its path from $s$ is the same labeled path in $U_y$, and it has length $H$ there as well. Thus
+
+$$
+Z=(z_0=s,z_1,\ldots,z_H=z)
+$$
+
+is a diameter path of both current trees and is contained in $C$.
+
+Fold both trees toward $s$ along $Z$. The folding map $\rho$ is the same function on original labels in both cases.
+
+Because $Z$ avoids $\Delta$, the map $\rho$ fixes every label of $\Delta$ and maps $C$ into $C$. It also fixes every spine vertex $p_i$, $0\le i\le r$. Indeed, the persistent leg gives $d_{U_x}(s,p_i)=i$. If $p_i$ is off $Z$, it is fixed by definition. If it lies on $Z$, its index there must be $i$, by uniqueness of paths. Since
+
+$$
+2i\le 2r<H,
+$$
+
+it lies in the retained half of $Z$ and is fixed again.
+
+We verify all parts of the invariant.
+
+**Trees and endpoints.** Section 2 and Lemma 3 apply to both legal folds, giving property 1.
+
+**Common vertices.** A current surviving vertex survives the next fold exactly when $\rho$ fixes it. The preceding common live sets agree and $\rho$ is shared, so the new common live sets agree.
+
+**Common edges.** An edge of a new folded graph between vertices $u,v\in C$ has a witness edge $\{\alpha,\beta\}$ in the preceding current tree, with $\rho(\alpha)=u$ and $\rho(\beta)=v$. Neither witness endpoint can lie in $\Delta$, since $\rho$ fixes $\Delta$. Thus both lie in $C$, where the preceding edge relations agree. The same witness produces the edge on the other side. Reversing the roles proves equality of the new common edge relations. This establishes property 2.
+
+**Paths inside the common part.** A new surviving vertex $v\in C$ was already a surviving common vertex. Its preceding path from $s$ lay in $C$. Applying $\rho$ produces a walk in $C$ from $s$ to $v$, since both endpoints are fixed. Removing repeated portions gives the unique path in the new tree. This proves property 3.
+
+**Distance bounds.** For a surviving $v\in\Delta$, both $s$ and $v$ are fixed by $\rho$. The distance inequality of Section 1 gives
+
+$$
+d_{\rho(U_x)}(s,v)\le d_{U_x}(s,v)\le2r,
+$$
+
+and likewise on the other side. This is property 4.
+
+**Survival of the legs.** Each leg consists of spine vertices and tail vertices in $\Delta$, all of which are fixed by $\rho$. Every leg edge therefore remains an edge, and the vertices remain distinct. The legs are still paths of length $2r$, proving property 5. In particular, their endpoint distances stay exactly $2r$ because the new graphs are trees.
+
+**Composite maps.** Set
+
+$$
+\sigma_{\mathrm{new}}=\rho\circ\sigma.
+$$
+
+The graph-image composition fact proves the required descriptions of the two new states. Both maps fix $\Delta$ and the spine, and both map $C$ into $C$, so their composition has the same properties. This proves property 6.
+
+Thus every synchronized step preserves the invariant. In particular, the two new diameters are again equal by Section 7.4; this is a conclusion of the invariant, not an assumption about arbitrary pairs of folds.
+
+### 7.6 The Synchronized Phase Terminates at Diameter Exactly $2r$
+
+As long as $H>2r$, Section 7.5 provides a synchronized legal step. Each such step strictly decreases the number of vertices in $U_x$, by Section 2. Therefore this phase cannot continue indefinitely.
+
+When it stops, $H\le2r$. The persistent legs always give $H\ge2r$, so at the stopping point,
+
+$$
+D(U_x)=D(U_y)=2r.
+$$
+
+Let $q\ge0$ be the number of synchronized steps taken. Both trees have undergone exactly $q$ such steps.
+
+> **Note.** The termination measure is the number of vertices, not the diameter. A legal fold need not strictly decrease the diameter. For example, folding a diameter of a star with at least four leaves merges two leaves and leaves the diameter equal to two. No bound of $r$ on the number of synchronized steps is asserted or needed.
+
+### 7.7 The Final Folds Give the Same Rooted Tree
+
+At the stopping point, the two legs are diameter paths. Fold $U_x$ along $L_x$ and $U_y$ along $L_y$, both toward $s$, and call the respective maps $\psi_x,\psi_y$.
+
+The leg $L_x$ has length $2r$, and $b_t$ has index $r+t$ on it. Therefore
+
+$$
+\psi_x(b_t)=p_{r-t}
+\qquad(1\le t\le r).
+$$
+
+The map $\psi_x$ fixes every other original label: it fixes the retained spine, and is the identity off the leg. Similarly,
+
+$$
+\psi_y(a_t)=p_{r-t}
+\qquad(1\le t\le r),
+$$
+
+and $\psi_y$ fixes every label outside $A_*$.
+
+We prove pointwise equality of the final maps on the original tree:
+
+$$
 \boxed{
-\operatorname{ecc}(x)
+\psi_x\circ\sigma\circ f_x
 =
-\max\{d(x,u),d(x,v)\}.
+\psi_y\circ\sigma\circ f_y.
 }
-
 $$
 
-### 证明
+There are four exhaustive cases.
 
-仍把直径写成
-$$
+**Case 1: $v=a_t$.** The initial images are $p_{r-t}$ and $a_t$. Both are fixed by $\sigma$, by the spine and difference-region conditions. The first is fixed by $\psi_x$, and the second is sent to $p_{r-t}$ by $\psi_y$. Thus both composites give $p_{r-t}$.
 
-p_0=u,p_1,\ldots,p_D=v.
+**Case 2: $v=b_t$.** The symmetric argument gives $p_{r-t}$ on both sides.
 
-$$
+**Case 3: $v\in C$.** The initial images agree at a vertex of $C$. Its image under $\sigma$ is again in $C$, and both final maps fix all of $C$, since the only labels they move belong to $A_*$ or $B_*$. Thus the final images agree.
 
-设 $x$ 所在分支接到 $p_i$，且
-$$
+**Case 4: $v\in\Delta\setminus(A_*\cup B_*)$.** Such a vertex is off both original diameter paths, so $f_x(v)=f_y(v)=v$. It is fixed by $\sigma$ because it belongs to $\Delta$, and it is off both legs, so both final maps fix it too.
 
-h=d(x,p_i).
+The equality of composites, together with Section 1.3, proves that the final labeled trees have exactly the same vertex set and edge set. The common label $s$ is fixed throughout, so they are equal as rooted trees.
 
-$$
+Since $r\ge1$, the two legs have positive length, and these final folds are legal. Both routes from $T_x,T_y$ have taken $q+1$ further folds. Thus Lemma 5 holds with $k=q+1$ in this case.
 
-任取顶点 $y$，设其分支接到 $p_j$，
-$$
+There is no assumption here that the synchronized maps commute with either endgame map. The pointwise comparison of the two entire composites is what proves equality.
 
-k=d(y,p_j).
+### 7.8 Equal-Length Complete Processes
 
-$$
+The common rooted tree $U$ still has $s$ as a diameter endpoint by Lemma 3. Choose any complete fixed-endpoint process from $U$, whose existence was proved in Section 5. Appending that same process to both routes gives complete processes of equal length from $T_x$ and $T_y$.
 
-由引理 1，
-$$
+Together with the $r=0$ case, this proves every assertion of Lemma 5 without assuming uniqueness of any process length.
 
-k\le\min(j,D-j).
+## 8. Uniqueness with a Fixed Endpoint
 
-$$
+**Proposition 1.** Let $s$ be a diameter endpoint of $T$. All complete processes that always choose a diameter starting at $s$ and fold toward $s$ have the same length.
 
-若 $i\le j$，且 $x,y$ 不在同一个挂接分支内，则
-$$
+Denote that length by $L(T,s)$.
 
-d(x,y)=h+(j-i)+k.
+**Proof.** Existence was established in Section 5. We prove uniqueness by strong induction on $n=|V(T)|$, simultaneously for every tree and every diameter endpoint.
 
-$$
+If $n=1$, no fold is legal and the only possible length is zero.
 
-由
-$$
+Suppose $n>1$ and the assertion holds for all smaller trees. Compare two complete processes. Their first folds use diameter paths $P,Q$ from $s$ and produce $T_x,T_y$. Both resulting trees have fewer than $n$ vertices, and $s$ remains a diameter endpoint of each.
 
-k\le D-j,
+The induction hypothesis therefore gives well-defined remaining lengths $L(T_x,s)$ and $L(T_y,s)$. By Lemma 5, there are routes of the same length $k$ from these two trees to a common rooted tree $U$. This tree is also smaller than $T$ and still has $s$ as a diameter endpoint.
+
+Append any complete fixed-endpoint process from $U$. The induction hypothesis, applied to the two first-fold states, gives
 
 $$
-得到
+L(T_x,s)=k+L(U,s)=L(T_y,s).
 $$
 
-d(x,y)
-\le h+(j-i)+(D-j)
-=h+D-i
-=d(x,v).
+Hence the two original complete processes both have length
 
 $$
-
-若 $j\le i$，则用
+1+L(T_x,s)=1+L(T_y,s).
 $$
 
-k\le j
+The first choices and the rest of the processes were arbitrary, so uniqueness follows.
+
+By Section 1.5, if a rooted isomorphism sends $(T,s)$ to $(T',s')$, then
 
 $$
-得到
+L(T,s)=L(T',s').
 $$
 
-d(x,y)
-\le h+(i-j)+j
-=h+i
-=d(x,u).
+This observation is needed when comparing opposite orientations of a diameter.
+
+## 9. Eccentricity Is Determined by the Ends of a Diameter
+
+**Lemma 6.** Let $u,v$ be the endpoints of a diameter of $T$. Then for every vertex $x$,
 
 $$
-
-如果 $x,y$ 位于同一个挂接分支内，则
+\boxed{
+\operatorname{ecc}_T(x)=\max\{d_T(x,u),d_T(x,v)\}.
+}
 $$
 
-d(x,y)\le h+k
+**Proof.** Write the diameter as $(p_0=u,\ldots,p_D=v)$. Let $x$ attach at $p_i$ with height $a=d_T(x,p_i)$. For an arbitrary vertex $y$, let its attachment be $p_j$ and its height be $b=d_T(y,p_j)$.
+
+The walk through the two attachment vertices gives
 
 $$
-，而
+d_T(x,y)\le a+|i-j|+b.
 $$
 
-k\le\min(i,D-i),
+This upper bound is valid even if the attachment vertices coincide and the unique $x$-$y$ path does not pass through that vertex.
+
+By Lemma 1, $b\le\min(j,D-j)$. If $i\le j$, then
 
 $$
-仍然不超过
+d_T(x,y)\le a+(j-i)+b
+\le a+D-i
+=d_T(x,v).
 $$
 
-\max\{h+i,h+D-i\}.
+If $j\le i$, then
 
 $$
-
-因此对任何 $y$，
+d_T(x,y)\le a+(i-j)+b
+\le a+i
+=d_T(x,u).
 $$
 
-d(x,y)
-\le
-\max\{d(x,u),d(x,v)\}.
+Thus every distance from $x$ is at most the asserted maximum. Taking $y=u$ or $y=v$ attains that maximum, proving equality.
+
+## 10. Diameter Endpoints Have a Common Opposite
+
+**Lemma 7.** If $a,b$ are diameter endpoints of a tree of diameter $D$, then either
 
 $$
-
-取 $y=u$ 或 $v$ 又能达到右侧较大者，所以等号成立。证毕。
-
----
-
-# 10. 任意两个直径端点有一个公共“对端”
-
-## 引理 7
-
-设 $a,b$ 都是树 $T$ 的直径端点，直径长度为 $D$。
-
-那么要么
+d_T(a,b)=D,
 $$
 
-d(a,b)=D,
+or there is a diameter endpoint $c$ such that
 
 $$
-要么存在另一个直径端点 $c$，使
+d_T(a,c)=d_T(b,c)=D.
 $$
 
-d(a,c)=d(b,c)=D.
+**Proof.** Choose an opposite endpoint $c$ for $b$, so $d_T(b,c)=D$. Since $a$ is a diameter endpoint, Lemma 6 applied to the diameter from $b$ to $c$ gives
 
 $$
-
-### 证明
-
-取一条以 $b$ 为端点的直径
+D=\operatorname{ecc}_T(a)
+=\max\{d_T(a,b),d_T(a,c)\}.
 $$
 
-b-c.
+If $d_T(a,b)\ne D$, it is strictly smaller than $D$, so $d_T(a,c)=D$. The vertex $c$ is itself a diameter endpoint because its distance to $b$ is $D$.
+
+## 11. Independence of the Fixed Endpoint
+
+**Proposition 2.** If $a,b$ are diameter endpoints of $T$, then
 
 $$
-
-于是
+\boxed{L(T,a)=L(T,b).}
 $$
 
-d(b,c)=D.
+**Proof.** For a singleton both values are zero, so assume $|V(T)|>1$.
+
+First suppose $d_T(a,b)=D(T)$. The strategy toward $a$ may begin by folding this diameter toward $a$, and the strategy toward $b$ may begin by folding its reverse toward $b$.
+
+By Section 1.2, the two resulting rooted trees are canonically isomorphic: the retained roots both represent the quotient class containing $a$ and $b$. Call the abstract quotient tree $U$ and this common class $q$. By Lemma 3, $q$ is a diameter endpoint of $U$.
+
+Proposition 1 and rooted-isomorphism invariance now give
 
 $$
-
-因为 $a$ 本身也是直径端点，
-$$
-
-\operatorname{ecc}(a)=D.
-
-$$
-
-对直径端点 $b,c$ 应用引理 6：
-$$
-
-D
-=
-\operatorname{ecc}(a)
-=
-\max\{d(a,b),d(a,c)\}.
-
-$$
-
-若
-$$
-
-d(a,b)<D,
-
-$$
-只能有
-$$
-
-d(a,c)=D.
-
-$$
-
-所以 $c$ 同时是 $a,b$ 的直径对端。证毕。
-
----
-
-# 11. $L(T,s)$ 与选哪个直径端点无关
-
-## 命题 2
-
-若 $a,b$ 都是 $T$ 的直径端点，则
-$$
-
-\boxed{L(T,a)=L(T,b)}.
-
-$$
-
-### 证明
-
-先考虑
-$$
-
-d(a,b)=D.
-
-$$
-
-固定 $a$ 的策略可以第一步就沿直径 $a-b$ 向 $a$ 折。
-
-固定 $b$ 的策略则可以沿同一条直径向 $b$ 折。
-
-但是根据第 1 节，两个方向产生的是同一个抽象商树：它们识别的都是
-$$
-
-d_i\sim d_{D-i}.
-
-$$
-
-而且 $a,b$ 被合并成同一个商点，记作 $q$。
-
-由引理 3，$q$ 在商树中仍是直径端点。
-
-因此
-$$
-
-L(T,a)=1+L(T',q),
-
-$$
-同时
-$$
-
-L(T,b)=1+L(T',q).
-
-$$
-
-故
-$$
-
-L(T,a)=L(T,b).
-
-$$
-
-再考虑
-$$
-
-d(a,b)<D.
-
-$$
-
-由引理 7，存在 $c$，满足
-$$
-
-d(a,c)=D,
+L(T,a)=1+L(U,q),
 \qquad
-d(b,c)=D.
-
+L(T,b)=1+L(U,q).
 $$
 
-刚才已经证明直径两端的 $L$ 相等，因此
-$$
+Thus the values agree for opposite diameter endpoints. This uses an isomorphism of the two quotient representations, not an assertion that their retained vertex labels are equal.
 
-L(T,a)=L(T,c),
-
-$$
-以及
-$$
-
-L(T,b)=L(T,c).
+If $d_T(a,b)<D(T)$, Lemma 7 supplies a common opposite endpoint $c$. The case just proved gives
 
 $$
-
-所以
+L(T,a)=L(T,c)=L(T,b).
 $$
 
-L(T,a)=L(T,b).
+This completes the proof.
+
+We may therefore define, for every finite nonempty tree,
 
 $$
-证毕。
-
-因此只要 $T$ 非空，我们可以定义一个只取决于无根树 $T$ 本身的量
+\boxed{\Phi(T)=L(T,s),}
 $$
 
-\boxed{\Phi(T)=L(T,s)}
+where $s$ is any diameter endpoint. Such an endpoint exists because the maximum distance in a finite nonempty tree is attained. Proposition 2 proves that the definition is independent of the choice of $s$. Section 1.5 proves that $\Phi$ is also invariant under graph isomorphism. For a singleton, $\Phi(T)=0$.
+
+## 12. Every Legal Fold Decreases the Value by One
+
+**Proposition 3.** If $T'$ is obtained from $T$ by any legal diameter fold, then
 
 $$
-其中 $s$ 是任意直径端点。
-
-命题 2 保证这个定义与 $s$ 无关。
-
-对于单点树，定义
+\boxed{\Phi(T)=1+\Phi(T').}
 $$
 
-\Phi(T)=0.
+Equivalently, $\Phi(T')=\Phi(T)-1$.
+
+**Proof.** Orient the chosen diameter toward its retained first endpoint $a$. The vertex $a$ is a diameter endpoint of $T$, so
 
 $$
-
----
-
-# 12. 最关键的一步：任意一次合法折叠都使 $\Phi$ 恰好减 $1$
-
-## 命题 3
-
-设 $T'$ 是从 $T$ 选择任意一条直径折叠一次得到的树。
-
-那么
-$$
-
-\boxed{\Phi(T')=\Phi(T)-1}.
-
-$$
-
-### 证明
-
-设所选直径两端为
-$$
-
-a,b.
-
-$$
-
-因为 $a$ 是直径端点，
-$$
-
 \Phi(T)=L(T,a).
-
 $$
 
-在“固定 $a$ 并始终向 $a$ 折”的合法策略中，我们完全可以把
-$$
+Let $q$ be the vertex of the quotient represented by $a$. The fixed-$a$ strategy is allowed to take this particular first fold, and Lemma 3 makes $q$ a diameter endpoint of the result.
 
-a-b
-
-$$
-选作第一条直径。
-
-第一步之后得到的商树正是 $T'$，只差顶点名称。
-
-设 $a,b$ 合并后的顶点为 $q$。
-
-由引理 3，
-$$
-
-q
+Append any complete process toward $q$. Proposition 1, followed by Proposition 2 in the folded tree, gives
 
 $$
-仍是 $T'$ 的一个直径端点。
-
-所以，根据 $L(T,a)$ 的定义，
+\Phi(T)
+=L(T,a)
+=1+L(T',q)
+=1+\Phi(T').
 $$
 
-L(T,a)
-=
-1+L(T',q).
+If $T'$ is represented using different vertex labels, Section 1.5 gives the same equality. The fold was arbitrary, so the identity holds for every legal choice.
+
+The assumption of legality includes $|V(T)|>1$; no decrease is asserted for a nonexistent operation on a singleton.
+
+## 13. Conclusion
+
+Consider any complete folding process
 
 $$
-
-而
+T=T_0\longrightarrow T_1\longrightarrow\cdots\longrightarrow T_m,
+\qquad |V(T_m)|=1.
 $$
 
-L(T,a)=\Phi(T),
+Applying Proposition 3 at each step and telescoping gives
+
+$$
+\Phi(T_0)=m+\Phi(T_m).
+$$
+
+Since $\Phi(T_m)=0$,
+
+$$
+\boxed{m=\Phi(T).}
+$$
+
+The right-hand side depends only on the initial tree. Thus every complete process has the same length, independently of every diameter and orientation chosen. This includes the initial singleton, for which the length is zero.
+
+The argument is not circular: termination and fixed-endpoint completions are proved first; delayed exchange then proves fixed-endpoint uniqueness; endpoint independence makes $\Phi$ well defined on unrooted trees; and only then is the one-step decrease used to conclude arbitrary-choice invariance.
+
+## Appendix A. Why Immediate Exchange Is False
+
+Here is a 14-vertex counterexample to the stronger claim that any two first-fold results are either already isomorphic or become isomorphic after one further fold each, even when those further folds may use arbitrary diameters.
+
+Start with the path
+
+$$
+p_0-p_1-p_2-p_3-p_4-p_5-p_6.
+$$
+
+At $p_6$, attach two paths of length two,
+
+$$
+p_6-a_1-a_2,
 \qquad
-L(T',q)=\Phi(T').
-
+p_6-b_1-b_2.
 $$
 
-于是
-$$
+Add three more leaves: $u$ adjacent to $p_1$, $v$ adjacent to $p_4$, and $c$ adjacent to $b_1$. All listed vertices are distinct. The diameter is eight: the paths from either $p_0$ or $u$ to any of $a_2,b_2,c$ have that length, and the other leaf-to-leaf distances are smaller.
 
-\Phi(T)=1+\Phi(T'),
-
-$$
-即
-$$
-
-\boxed{\Phi(T')=\Phi(T)-1}.
+Compare the first folds toward $p_0$ along
 
 $$
-证毕。
-
-注意这里完全没有要求所选直径是哪一条。
-
-这正是我们要寻找的势能。
-
----
-
-# 13. 主定理
-
-现在考虑任意一个完整折叠过程
-$$
-
-T_0\to T_1\to T_2\to\cdots\to T_m,
-
-$$
-其中
-$$
-
-T_0=G,
+P=(p_0,\ldots,p_6,a_1,a_2),
 \qquad
-|V(T_m)|=1.
-
+Q=(p_0,\ldots,p_6,b_1,b_2).
 $$
 
-由命题 3，每一步都有
-$$
+Both results retain the path $p_0-p_1-p_2-p_3-p_4$, the leaf $u$ at $p_1$, and the leaf $v$ at $p_4$.
 
-\Phi(T_{i+1})
-=
-\Phi(T_i)-1.
+After folding $P$, the remaining additional part is $p_2-b_1$ with two leaves $b_2,c$ at $b_1$. This tree has maximum degree three.
 
-$$
+After folding $Q$, the remaining additional part is $p_2-a_1-a_2$, together with the leaf $c$ now attached to $p_1$. The vertex $p_1$ has degree four. Thus the two first-fold results are not isomorphic.
 
-所以
-$$
+Both new diameters are five. In the first tree every diameter joins $v$ to one of $p_0,u,b_2,c$; in the second every diameter joins $v$ to one of $p_0,u,c,a_2$. These lists are exhaustive: the listed pairs have distance five, and all pairs of leaves not containing $v$ have distance at most four.
 
-\Phi(T_i)=\Phi(T_0)-i.
+Folding any listed diameter in the first tree gives, up to isomorphism, two degree-three vertices joined by a path of length two, with two leaves attached to each of those vertices. Its degree sequence is
 
 $$
-
-特别地，
+(3,3,2,1,1,1,1).
 $$
 
-\Phi(T_m)=\Phi(T_0)-m.
+For example, orient a diameter from its endpoint other than $v$. Its middle edge is $p_2-p_3$; folding identifies $p_2$ with $p_3$, the preceding vertex with $p_4$, and the endpoint with $v$. Choosing an endpoint in either of the two pairs of leaves gives the stated shape.
+
+In the second tree every listed diameter fold gives one degree-four vertex with three adjacent leaves and one attached path of length three. The same middle-edge calculation, with the endpoint either one of the three leaves at $p_1$ or $a_2$, gives degree sequence
 
 $$
-
-而 $T_m$ 是单点树，根据定义
+(4,2,2,1,1,1,1).
 $$
 
-\Phi(T_m)=0.
+The degree sequences differ, so no choice of one additional fold on each side can make the results isomorphic. This explains why the proof must allow a delayed exchange. In Section 7's notation this example has $r=2$ and initial folded diameter $H=5>2r$.
 
-$$
+## Appendix B. Corrections and Proof Dependencies
 
-因此
-$$
+The reformulation makes the following distinctions explicit.
 
-0=\Phi(T_0)-m,
+- **Immediate versus delayed exchange.** The preliminary one-extra-fold claim is false, as Appendix A shows. Lemma 5 asserts equal numbers of further folds, without requiring that number to be one.
+- **A fixed region versus a metric ball.** The set $\Delta$ consists of original descendants of the two tails. Its surviving vertices have distance at most $2r$ in each current tree. The two radius-$2r$ balls need not be equal.
+- **Vertex agreement versus path agreement.** Equal common vertex and edge sets are accompanied by an explicit path-avoidance property. This proves equality of common distances and hence equality of the two diameters at every stage.
+- **Fixed labels versus unchanged distances.** Fixing the labels of the legs is not by itself a distance argument. Their edges and distinctness are preserved too, so they remain paths in trees and their endpoint distances remain exactly $2r$.
+- **Termination measure.** Vertex count strictly decreases; diameter need not. Neither immediate merging nor a prescribed number $r$ of synchronized folds is used.
+- **Final identifications.** Identifying the two visible tails is not the whole conclusion. Equality of the composite maps is checked on every original vertex, including all off-path branches, and then gives equality of the entire quotient graphs.
+- **Degenerate cases and relabeling.** Coincident diameters, singleton first-fold results, and the singleton initial tree are handled without performing an illegal fold. Opposite orientations are compared by rooted isomorphism.
+- **Order of construction.** Existence does not presuppose uniqueness, and $\Phi$ is introduced only after both fixed-endpoint uniqueness and endpoint independence have been proved.
 
-$$
-即
-$$
-
-\boxed{m=\Phi(T_0)}.
-
-$$
-
-右边只由初始树 $T_0=G$ 决定，与每一步到底选择哪条直径完全无关。
-
-故得证：
-
-$$
-
-\boxed{
-\text{对于确定的初始树 }G，
-\text{任意合法折叠到单点所需的操作次数完全相同。}
-}
-
-$$
-
----
-
-真正起作用的结构可以浓缩成一句话：**固定一个直径端点 $s$ 后，不同最远点造成的差异只会落在更小的距离尺度内；在那个尺度真正成为直径之前，其余更大的折叠可以同步进行；到达那个尺度时再补一次折叠，两条路线就汇合。** 这使得固定端点的折叠长度成为良定义量，而它又恰好在任何一次普通直径折叠中下降 $1$。
-
-官方的简要题解也特别指出了“固定一个初始直径端点、之后始终向它折叠，则该点始终保持为直径端点”这一关键性质；上面引理 1–5 给出了它以及所需交换性质的完整证明。
+Sections 1-13 retain the section and lemma numbering used by the Lean development. The delayed phase and final map comparison correspond to `SyncStep.lean` and `SyncEndgame.lean`; the remaining propositions are assembled in `Exchange.lean` and `MainTheorem.lean`. The mathematical proof above is self-contained and does not rely on computational testing.

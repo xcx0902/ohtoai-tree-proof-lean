@@ -65,7 +65,7 @@ The assembly is complete and mirrors `REF.md` §11–13:
 | `REF.md` | Content | Lean declaration | Status |
 | --- | --- | --- | --- |
 | §1 | the folding operation, the quotient | `DiamPath.rep`, `foldAlive`, `foldGraph`, `foldState` | **proved** |
-| §2 | the folded graph is again a tree | `foldGraph_isAcyclic` | **gap** (connectivity `fold_reachable` and progress `FoldStep.card_lt` are proved; acyclicity is the counting argument of §2) |
+| §2 | the folded graph is again a tree | `foldGraph_isAcyclic` | **proved** (the counting argument: `|alive| = |foldAlive| + ⌈D/2⌉` vertex-wise, `|E'| + ⌈D/2⌉ ≤ |E|` edge-wise, connectivity, and `|E| + 1 = |alive|`) |
 | §3 Lemma 1 | a branch at `p i` has height `≤ min i (D-i)` | `dist_le_min_index` | **proved** |
 | §4 Lemma 2 | the cone tree lemma | — | **gap** — needed for Lemma 3 (the route of §5); not formalized yet |
 | §5 Lemma 3 | an endpoint stays a diameter endpoint when folding towards it | `isDiamEnd_foldState` | **gap** |
@@ -86,16 +86,10 @@ there (`exists_diamPath_at`).
 
 ## What is left, precisely
 
-Four declarations still contain a `sorry`; they are exactly the mathematical content of `REF.md`
+Three declarations still contain a `sorry`; they are exactly the mathematical content of `REF.md`
 that is not yet formalized:
 
-1. `foldGraph_isAcyclic` (`OhtoaiTreeProof/Basic.lean`) — `REF.md` §2: counting vertices and
-   edges, one finds `|V'| = |V| - ⌈D/2⌉` and `|E'| = |E| - ⌈D/2⌉`, so the folded graph is connected
-   with `|E'| = |V'| - 1` edges, hence a tree.  (The vertex count, the edge bound
-   `|E'| + ⌈D/2⌉ ≤ |E|` and the connectivity of the folded graph are all proved; what is missing is
-   closing the induced graph's edge count to a tree via
-   `SimpleGraph.Connected.card_vert_le_card_edgeSet_add_one` and `isTree_iff_connected_and_card`.)
-2. `isDiamEnd_foldState` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 3: after folding, every branch
+1. `isDiamEnd_foldState` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 3: after folding, every branch
    hanging at the `j`-th vertex `q j` of the folded diameter has height at most `j` (the branches at
    `p j` and at `p (D-j)` both have height at most `min j (D-j) = j` by Lemma 1); `REF.md` §4's cone
    lemma (Lemma 2) then shows that `q 0` is still a diameter endpoint, since for vertices `x`, `y`
@@ -103,10 +97,10 @@ that is not yet formalized:
    formalization needs the cone lemma for a general tree (a projection/height formula for the
    vertices of a tree relative to a path) on top of the triangle-type bounds already proved
    (`DiamPath.dist_eq_dist_add`, `DiamPath.fold_dist_le`).
-3. `exchange` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 5, the delayed exchange lemma: the two
+2. `exchange` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 5, the delayed exchange lemma: the two
    folds towards `s` along two different diameters differ only inside a ball around the branching
    point of the two diameters, and that ball is destroyed by the first few further folds.
-4. `LValue_endpoint_independent` (`OhtoaiTreeProof/MainTheorem.lean`) — Proposition 2.  Here the
+3. `LValue_endpoint_independent` (`OhtoaiTreeProof/MainTheorem.lean`) — Proposition 2.  Here the
    formalization has to do slightly more than `REF.md`: `REF.md` says that folding along the same
    diameter `a`–`b` towards `a` and towards `b` gives "the same abstract quotient tree", which is
    true up to isomorphism — the two folded states differ by the permutation `p i ↦ p (D - i)`
@@ -114,9 +108,8 @@ that is not yet formalized:
    process (a `StateIso` structure, transportation of `DiamPath`/`FoldStep`/`LValue` along a
    permutation, and the commutation of `rep` with it), which is not yet in the development.
 
-A `sorry`-free proof of items 1 and 2 would also remove the last assumption from the statement
-"every state of the process is a tree": `foldState` is constructed using
-`DiamPath.foldGraph_isAcyclic`, so that field is currently assumed rather than proved.
+Every state of the process is now *proved* to be a tree (`DiamPath.foldGraph_isAcyclic`, `REF.md`
+§2), so the only assumptions left in the development are the three statements above.
 
 ## Building
 
@@ -128,15 +121,16 @@ lake build OhtoaiTreeProof      # builds the library only
 ```
 
 `Main.lean` prints a short description of the formalized statement.  The module layout follows the
-proof: `Basic.lean` (states, diameters, folding), `Progress.lean` (folding decreases the number of
+proof: `Basic.lean` (states, diameters, folding, and the counting argument of §2), `Progress.lean` (folding decreases the number of
 vertices), `PathExists.lean` (a diameter starting at a given endpoint), `Diameter.lean` (the metric
 lemmas about a diameter: `REF.md` Lemmas 1, 6 and 7), `Exchange.lean` (`REF.md` Lemmas 3 and 5, and
 the derivation of Proposition 1 and of `Phi_exists`), `MainTheorem.lean` (the value `Phi`, the
 propositions, and the main theorem).
 
-Everything except the four `sorry`s above is checked by Lean: `#print axioms
+Everything except the three `sorry`s above is checked by Lean: `#print axioms
 OhtoaiTreeProof.fold_count_unique` reports only `propext`, `Classical.choice` and `Quot.sound`
-besides the `sorryAx` contributed by the four open statements.  The development was also checked
+besides the `sorryAx` contributed by the three open statements, and
+`#print axioms OhtoaiTreeProof.DiamPath.foldGraph_isAcyclic` reports no `sorryAx` at all.  The development was also checked
 against the computational experiments in `research/verify_invariance.py` (exhaustive over all
 labelled trees with at most 8 vertices, plus random trees up to 14 vertices): every complete
 folding process has the same length, and every fold produces a tree.

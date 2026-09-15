@@ -6,17 +6,17 @@ operations needed to reduce a tree to a single vertex does not depend on the dia
 
 The proof follows `REF.md` §11–13.  Fix a diameter endpoint `s` of the initial tree and always
 fold *towards* `s` (that is, along a diameter whose first vertex is `s`); by the key lemma of
-`REF.md` (Lemma 3, formalized in `OhtoaiTreeProof.Endpoint`) the vertex `s` remains a diameter
+`REF.md` (Lemma 3, `OhtoaiTreeProof.isDiamEnd_foldState`) the vertex `s` remains a diameter
 endpoint of every intermediate tree, so the process can be repeated until a single vertex is
-left.  The number of operations of that process is independent of the choices made
-(`LValue_unique`, REF Proposition 1); averaging over all diameter endpoints shows that the
-resulting number `Phi S` does not depend on the endpoint chosen (`LValue_endpoint_independent`,
-REF Proposition 2); and every single folding operation, along *any* diameter, decreases `Phi`
-by exactly one (`Phi_step`, REF Propositions 2 and 3).  Hence any complete folding process has
-length `Phi S`, and in particular all complete processes have the same length
+left (`OhtoaiTreeProof.Phi_exists`).  The number of operations of that process is independent of
+the choices made (`OhtoaiTreeProof.LValue_unique`, REF Proposition 1, proved in
+`OhtoaiTreeProof.Exchange` from the exchange Lemma 5).  Its value `Phi S` is therefore well
+defined, and every single folding operation, along *any* diameter, decreases `Phi` by exactly
+one (`Phi_step`, REF Propositions 2 and 3, which uses `LValue_endpoint_independent`).  Hence any
+complete folding process has length `Phi S`: all complete processes have the same length
 (`fold_count_unique`).
 -/
-import OhtoaiTreeProof.Basic
+import OhtoaiTreeProof.Exchange
 
 set_option linter.unusedSectionVars false
 
@@ -26,59 +26,7 @@ open SimpleGraph
 
 variable {V : Type*} [Fintype V] [DecidableEq V]
 
-/-! ## Diameter endpoints -/
-
-/-- `s` is a diameter endpoint of the state `S` if it is a live vertex at distance `diam`
-from some other live vertex. -/
-def IsDiamEnd (S : TreeState V) (s : V) : Prop :=
-  s ∈ S.alive ∧ ∃ y ∈ S.alive, S.graph.dist s y = S.diam
-
-theorem IsDiamEnd.mem {S : TreeState V} {s : V} (h : IsDiamEnd S s) : s ∈ S.alive := h.1
-
-theorem IsDiamEnd.ecc {S : TreeState V} {s : V} (h : IsDiamEnd S s) :
-    ∃ y ∈ S.alive, S.graph.dist s y = S.diam := h.2
-
-/-- The endpoints of a diameter path are diameter endpoints of the state. -/
-theorem DiamPath.isDiamEnd_zero {S : TreeState V} (P : DiamPath S) :
-    IsDiamEnd S (P.p 0) :=
-  ⟨P.mem 0, P.p P.last, P.mem P.last, P.isDiam⟩
-
-theorem DiamPath.isDiamEnd_last {S : TreeState V} (P : DiamPath S) :
-    IsDiamEnd S (P.p P.last) :=
-  ⟨P.mem P.last, P.p 0, P.mem 0, by rw [SimpleGraph.dist_comm]; exact P.isDiam⟩
-
-/-- A nonempty state has a diameter endpoint. -/
-theorem exists_isDiamEnd {S : TreeState V} (h : S.alive.Nonempty) : ∃ s, IsDiamEnd S s := by
-  obtain ⟨u, hu, v, hv, hd⟩ := S.exists_dist_eq_diam h
-  exact ⟨u, hu, v, hv, hd⟩
-
-/-! ## Folding towards a fixed endpoint -/
-
-/-- One folding step in which the fold is performed towards the fixed vertex `s`: the diameter
-along which we fold starts at `s`, so that `s` is one of the two vertices being identified. -/
-def FoldStepAt (s : V) (S S' : TreeState V) : Prop :=
-  ∃ P : DiamPath S, P.p 0 = s ∧ S' = P.foldState
-
-/-- `FoldSeqAt s S S' n`: `S'` is obtained from `S` by `n` folding steps, each of them performed
-towards the fixed vertex `s`.  No step is taken from a state with at most one vertex, so the
-sequence is *maximal*: it stops as soon as a single vertex is left. -/
-inductive FoldSeqAt (s : V) : TreeState V → TreeState V → ℕ → Prop
-  | refl (S : TreeState V) : FoldSeqAt s S S 0
-  | step {S S' S'' : TreeState V} {n : ℕ} (hpos : 2 ≤ S.alive.card) :
-      FoldStepAt s S S' → FoldSeqAt s S' S'' n → FoldSeqAt s S S'' (n + 1)
-
-/-- `LValue S s n`: there is a complete folding process of `S` that always folds towards `s`,
-performs exactly `n` operations, and ends with a single vertex. -/
-def LValue (S : TreeState V) (s : V) (n : ℕ) : Prop :=
-  ∃ S' : TreeState V, FoldSeqAt s S S' n ∧ IsSingle S'
-
 /-! ## The value of the process -/
-
-/-- A state with more than one vertex admits a complete folding process towards some diameter
-endpoint (REF.md Lemma 3 and Proposition 2: the process always makes progress). -/
-theorem Phi_exists (S : TreeState V) (h : ¬S.alive.card ≤ 1) :
-    ∃ s : V, IsDiamEnd S s ∧ ∃ n : ℕ, LValue S s n := by
-  sorry
 
 /-- The value of a state: the number of operations of a complete folding process.  The choice
 made here (a diameter endpoint together with a complete process towards it) is irrelevant by
@@ -92,27 +40,55 @@ theorem Phi_eq_zero_of_single {S : TreeState V} (h : IsSingle S) : Phi S = 0 := 
   have h' : S.alive.card ≤ 1 := h
   rw [Phi, dite_eq_left h']
 
-/-! ## The three propositions of `REF.md` that make up the mathematical core -/
-
-/-- REF.md Proposition 1 (the statement of §8): when one always folds towards a fixed diameter
-endpoint `s`, the number of operations is independent of the choices made.  This is the
-mathematical core of the whole proof; `REF.md` proves it through the exchange Lemma 5 (§7). -/
-theorem LValue_unique {S S₁ S₂ : TreeState V} {s : V} {n m : ℕ}
-    (hs : IsDiamEnd S s) (h₁ : FoldSeqAt s S S₁ n) (h₂ : FoldSeqAt s S S₂ m)
-    (hs₁ : IsSingle S₁) (hs₂ : IsSingle S₂) : n = m := by
-  sorry
+/-! ## The propositions of `REF.md` that make up the mathematical core -/
 
 /-- REF.md Proposition 2 (§10): the number of operations of the fixed-endpoint process does not
-depend on which diameter endpoint was fixed. -/
+depend on which diameter endpoint was fixed.  (`REF.md` proves this from Lemma 7: two diameter
+endpoints `a`, `b` either are at distance `diam` from each other, or have a common "opposite"
+diameter endpoint `c`; in both cases the fixed-endpoint process from `a` can be compared with the
+one from `b`.) -/
 theorem LValue_endpoint_independent {S : TreeState V} {s t : V} {n : ℕ}
     (hs : IsDiamEnd S s) (ht : IsDiamEnd S t) (h : LValue S s n) : LValue S t n := by
   sorry
 
+/-- REF.md Lemma 7 (§10): two diameter endpoints of a tree either are antipodal, or have a common
+diameter endpoint opposite to both of them. -/
+theorem exists_common_opposite {S : TreeState V} {a b : V} (ha : IsDiamEnd S a)
+    (hb : IsDiamEnd S b) :
+    S.graph.dist a b = S.diam ∨
+      ∃ c : V, IsDiamEnd S c ∧ S.graph.dist a c = S.diam ∧ S.graph.dist b c = S.diam := by
+  sorry
+
 /-- REF.md Propositions 2 and 3 (§12): every single folding operation, along an arbitrary
-diameter, decreases the value of the process by exactly one. -/
+diameter, decreases the value of the process by exactly one.
+
+`REF.md` proves this by taking the diameter `a`–`b` along which the operation folds: `a` is a
+diameter endpoint, `Phi S = L(S,a)`, the first operation of the fixed-endpoint process from `a`
+is exactly this fold, and the merged vertex `q` of `a` and `b` is a diameter endpoint of `S'`
+(Lemma 3), so that `L(S,a) = 1 + L(S',q) = 1 + Phi S'`. -/
 theorem Phi_step {S S' : TreeState V} (h : FoldStep S S') (hcard : 2 ≤ S.alive.card) :
     Phi S = Phi S' + 1 := by
   sorry
+
+/-! ## The value is realised by the fixed-endpoint process -/
+
+/-- The value of a state is realised by a complete process towards any of its diameter
+endpoints: this is where `LValue_unique` is used. -/
+theorem LValue_Phi {S : TreeState V} {s : V} (hs : IsDiamEnd S s) : LValue S s (Phi S) := by
+  by_cases h : S.alive.card ≤ 1
+  · rw [Phi_eq_zero_of_single h]
+    exact ⟨S, FoldSeqAt.refl S, h⟩
+  · have hd : Phi S = Classical.choose (Classical.choose_spec (Phi_exists S h)).2 := by
+      rw [Phi, dite_eq_right h]
+    have hEnd : IsDiamEnd S (Classical.choose (Phi_exists S h)) :=
+      (Classical.choose_spec (Phi_exists S h)).1
+    have hL : LValue S (Classical.choose (Phi_exists S h))
+        (Classical.choose (Classical.choose_spec (Phi_exists S h)).2) :=
+      Classical.choose_spec (Classical.choose_spec (Phi_exists S h)).2
+    rw [hd]
+    exact LValue_endpoint_independent hEnd hs hL
+
+/-! ## The main theorem -/
 
 /-- The value decreases by exactly one at every step of any complete folding process. -/
 theorem Phi_eq_of_foldSeq {S S' : TreeState V} {n : ℕ} (h : FoldSeq S S' n) :
@@ -122,8 +98,6 @@ theorem Phi_eq_of_foldSeq {S S' : TreeState V} {n : ℕ} (h : FoldSeq S S' n) :
   | step hpos hstep _ ih =>
       rw [Phi_step hstep hpos, ih]
       omega
-
-/-! ## The main theorem -/
 
 /-- **Main theorem.**  For a tree `S`, any two complete folding processes — each of them folding
 along an arbitrary diameter at every step, until a single vertex is left — have the same number

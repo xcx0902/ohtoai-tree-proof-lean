@@ -298,4 +298,50 @@ inductive FoldSeq : TreeState V → TreeState V → ℕ → Prop
 /-- A state consisting of a single vertex. -/
 def IsSingle (S : TreeState V) : Prop := S.alive.card ≤ 1
 
+/-! ## Diameter endpoints -/
+
+/-- `s` is a diameter endpoint of the state `S` if it is a live vertex at distance `diam`
+from some other live vertex. -/
+def IsDiamEnd (S : TreeState V) (s : V) : Prop :=
+  s ∈ S.alive ∧ ∃ y ∈ S.alive, S.graph.dist s y = S.diam
+
+theorem IsDiamEnd.mem {S : TreeState V} {s : V} (h : IsDiamEnd S s) : s ∈ S.alive := h.1
+
+theorem IsDiamEnd.ecc {S : TreeState V} {s : V} (h : IsDiamEnd S s) :
+    ∃ y ∈ S.alive, S.graph.dist s y = S.diam := h.2
+
+/-- The endpoints of a diameter path are diameter endpoints of the state. -/
+theorem DiamPath.isDiamEnd_zero {S : TreeState V} (P : DiamPath S) :
+    IsDiamEnd S (P.p 0) :=
+  ⟨P.mem 0, P.p P.last, P.mem P.last, P.isDiam⟩
+
+theorem DiamPath.isDiamEnd_last {S : TreeState V} (P : DiamPath S) :
+    IsDiamEnd S (P.p P.last) :=
+  ⟨P.mem P.last, P.p 0, P.mem 0, by rw [SimpleGraph.dist_comm]; exact P.isDiam⟩
+
+/-- A nonempty state has a diameter endpoint. -/
+theorem exists_isDiamEnd {S : TreeState V} (h : S.alive.Nonempty) : ∃ s, IsDiamEnd S s := by
+  obtain ⟨u, hu, v, hv, hd⟩ := S.exists_dist_eq_diam h
+  exact ⟨u, hu, v, hv, hd⟩
+
+/-! ## Folding towards a fixed endpoint -/
+
+/-- One folding step in which the fold is performed towards the fixed vertex `s`: the diameter
+along which we fold starts at `s`, so that `s` is one of the two vertices being identified. -/
+def FoldStepAt (s : V) (S S' : TreeState V) : Prop :=
+  ∃ P : DiamPath S, P.p 0 = s ∧ S' = P.foldState
+
+/-- `FoldSeqAt s S S' n`: `S'` is obtained from `S` by `n` folding steps, each of them performed
+towards the fixed vertex `s`.  No step is taken from a state with at most one vertex, so the
+sequence is *maximal*: it stops as soon as a single vertex is left. -/
+inductive FoldSeqAt (s : V) : TreeState V → TreeState V → ℕ → Prop
+  | refl (S : TreeState V) : FoldSeqAt s S S 0
+  | step {S S' S'' : TreeState V} {n : ℕ} (hpos : 2 ≤ S.alive.card) :
+      FoldStepAt s S S' → FoldSeqAt s S' S'' n → FoldSeqAt s S S'' (n + 1)
+
+/-- `LValue S s n`: there is a complete folding process of `S` that always folds towards `s`,
+performs exactly `n` operations, and ends with a single vertex. -/
+def LValue (S : TreeState V) (s : V) (n : ℕ) : Prop :=
+  ∃ S' : TreeState V, FoldSeqAt s S S' n ∧ IsSingle S'
+
 end OhtoaiTreeProof

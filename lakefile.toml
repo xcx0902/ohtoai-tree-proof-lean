@@ -1,0 +1,14 @@
+name = "ohtoai-tree-proof"
+version = "0.1.0"
+defaultTargets = ["ohtoai-tree-proof"]
+
+[[lean_lib]]
+name = "OhtoaiTreeProof"
+
+[[lean_exe]]
+name = "ohtoai-tree-proof"
+root = "Main"
+
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4.git"

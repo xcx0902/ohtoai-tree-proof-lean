@@ -287,10 +287,12 @@ end DiamPath
 /-- One folding step: `S'` is obtained from `S` by folding along some diameter. -/
 def FoldStep (S S' : TreeState V) : Prop := ∃ P : DiamPath S, S' = P.foldState
 
-/-- `FoldSeq S S' n`: `S'` is obtained from `S` by `n` folding steps. -/
+/-- `FoldSeq S S' n`: `S'` is obtained from `S` by `n` folding operations.  In a state with at
+most one vertex the diameter is empty and folding would do nothing, so no step is taken from such
+a state: the process stops exactly when a single vertex is left. -/
 inductive FoldSeq : TreeState V → TreeState V → ℕ → Prop
   | refl (S : TreeState V) : FoldSeq S S 0
-  | step {S S' S'' : TreeState V} {n : ℕ} :
+  | step {S S' S'' : TreeState V} {n : ℕ} (hpos : 2 ≤ S.alive.card) :
       FoldStep S S' → FoldSeq S' S'' n → FoldSeq S S'' (n + 1)
 
 /-- A state consisting of a single vertex. -/

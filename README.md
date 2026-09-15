@@ -2,6 +2,9 @@
 
 A Lean 4 / Mathlib formalization of the tree-folding theorem proved in [`REF.md`](REF.md).
 
+The proof chain is complete: there are no admitted proofs or additional axioms. The default build
+checks the axiom dependencies of the exchange lemma and the main results.
+
 ## The theorem
 
 Fix a finite tree `G`.  Choose a diameter `d₀ … d_D` of `G` and fold along it: identify the
@@ -70,7 +73,7 @@ The assembly is complete and mirrors `REF.md` §11–13:
 | §4 Lemma 2 | the cone tree lemma | `Cone.dist_le_max`, `Cone.exists_dist_eq` | **proved** (for an arbitrary finite acyclic graph and a path) |
 | §5 Lemma 3 | an endpoint stays a diameter endpoint when folding towards it | `isDiamEnd_foldState` (`Cone.lean`) | **proved** |
 | §6 Lemma 4 | `2r ≤ D` for two farthest vertices | `TreeState.dist_le_diam` | **proved** |
-| §7 Lemma 5 | the delayed exchange lemma | `exchange` | **gap** — the mathematical core |
+| §7 Lemma 5 | the delayed exchange lemma | `exchange` | **proved** (synchronized phase and common endgame) |
 | §8 Prop. 1 | the fixed-endpoint process has a choice-independent length | `LValue_unique` | **proved** from Lemma 3 and Lemma 5 |
 | §9 Lemma 6 | `ecc x = max (d x u) (d x v)` for a diameter `u v` | `dist_le_max_dist_ends` | **proved** |
 | §10 Lemma 7 | two diameter endpoints have a common opposite | `exists_common_opposite` | **proved** from Lemma 6 |
@@ -84,28 +87,46 @@ needs: every fold removes at least one vertex (`DiamPath.foldAlive_card_lt`,
 process terminates (`Phi_exists`); and from any diameter endpoint there is a diameter path starting
 there (`exists_diamPath_at`).
 
-## What is left, precisely
+## The Exchange Proof
 
-One declaration still contains a `sorry`, the single hard statement of the development:
+`exchange` in `OhtoaiTreeProof/Exchange.lean` is proved by
+`DiamPath.synchronized_exchange` in `OhtoaiTreeProof/SyncEndgame.lean`.
+For two diameters from `s`, let `r` be the length of their tails after the last common vertex.
 
-1. `exchange` (`OhtoaiTreeProof/Exchange.lean`) — Lemma 5, the delayed exchange lemma: folding
-   towards the same endpoint `s` along two different diameters leads to two states which admit
-   complete processes towards `s` of the same length.  `REF.md` §7 proves it by comparing the two
-   diameters: they share a prefix `s … w` and then split into two tails of equal length `r`; the
-   `t`-th vertex of each tail is identified with the same vertex of the prefix, so the two folded
-   trees agree outside the ball of radius `r` around `w`, and `r` further folds towards `s` erase
-   that ball, after which the two processes can be continued identically.  This is the only place
-   where the argument needs global geometry of the tree, and it is the sole remaining gap; every
-   other statement of `REF.md` (including Propositions 1, 2, 3 and the main theorem) is proved
-   from it.
+* The initial geometry and `SyncCtx` are established in `ExchangeLemma5.lean`, `Phase1.lean`,
+  `Phase2.lean`, `CommonDist.lean`, and `Sync.lean`. The two folded states agree on the common
+  part, their difference region lies within distance `2r` of `s`, and both retain a leg of
+  length `2r`.
+* `SyncStep.lean` proves `SyncCtx.step`: while the diameter exceeds `2r`, both states can fold
+  along the same diameter in the common part. The entire invariant, including the explicit
+  composite quotient map, is preserved. `SyncCtx.reach_scale` uses strong induction on the
+  number of live vertices to reach diameter exactly `2r`.
+* `SyncEndgame.lean` proves `legAt_rep_comp`: folding the surviving legs after the synchronized
+  phase gives equal composite maps on the original vertices. `SyncCtx.commonEndgame` derives
+  equality of both live sets and graphs, hence literal equality of the final states.
+* The common state admits a terminating fixed-endpoint process, so both completions have equal
+  length. When `r = 0`, the first-fold states are already equal; this also covers singleton
+  results, where no further fold is legal.
 
-Every state of the process is proved to be a tree (`DiamPath.foldGraph_isAcyclic`, `REF.md` §2), and
-the only assumption left in the development is the statement above.
+The synchronized phase is not asserted to take `r` steps: its termination follows from strict
+decrease of the live vertex count. The persistent legs prevent the diameter from dropping below
+`2r` before the common endgame.
 
-Everything except the `sorry` above is checked by Lean: `#print axioms
-OhtoaiTreeProof.fold_count_unique` reports only `propext`, `Classical.choice` and `Quot.sound`
-besides the `sorryAx` contributed by `exchange` (through Proposition 1), and
-`#print axioms OhtoaiTreeProof.DiamPath.foldGraph_isAcyclic` reports no `sorryAx` at all.  The development was also checked
+## Build and Audit
+
+```sh
+lake build
+lake env lean OhtoaiTreeProof/AxiomAudit.lean
+lake exe ohtoai-tree-proof
+```
+
+`AxiomAudit.lean` is imported by the library root and therefore checked by the default build.
+Its `#guard_msgs` checks assert that `exchange`, `LValue_unique`, `Phi_step`,
+`fold_count_unique`, and `fold_count_unique_of_isTree` depend only on `propext`,
+`Classical.choice`, and `Quot.sound`. An unexpected axiom, including `sorryAx`, fails the build.
+Every state of the process is also proved to be a tree (`DiamPath.foldGraph_isAcyclic`, `REF.md` §2).
+
+The development was also checked
 against the computational experiments in `research/verify_invariance.py` (exhaustive over all
 labelled trees with at most 8 vertices, plus random trees up to 14 vertices): every complete
 folding process has the same length, and every fold produces a tree.

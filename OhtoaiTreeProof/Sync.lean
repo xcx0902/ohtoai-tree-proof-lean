@@ -1,13 +1,10 @@
 /-
-# REF.md §7: the synchronised phase, and the delayed exchange lemma
+# REF.md §7: the invariant for the synchronised phase
 
-`REF.md` Lemma 5 reduces (`OhtoaiTreeProof/ExchangeProof.lean`) to `exists_commonEndgame`: from the
-two states `P.foldState`, `Q.foldState` obtained by folding a tree `S` along two diameters `P`, `Q`
-starting at the same diameter endpoint `s`, there are complete folding processes towards `s` of the
-same length whose last step is common.  This file supplies the missing *synchronised phase* of
-`REF.md` §7 and the endgame at the pair the phase produces, hence proves the delayed exchange lemma
-`sync_exchange` (with the nondegeneracy hypothesis `1 ≤ P.foldState.diam` that the degenerate
-counterexample of `Phase3.lean` §4 forces), and finally `exchange` without hypotheses.
+This file defines `SyncCtx` and proves its initial instance, the geodesic property, and transport
+of a common diameter. `SyncStep.lean` proves preservation and termination of the phase;
+`SyncEndgame.lean` proves the common endgame and `DiamPath.synchronized_exchange`.
+Coincident initial diameters are handled separately, including singleton first-fold states.
 
 ## The shape of the argument
 
@@ -29,14 +26,14 @@ within `2r` of `s` in either of them.
   the composite `σ` together with the descriptions of the two states as quotients of `P.foldState`
   and `Q.foldState` by `σ` (§3).  Membership and adjacency of `C` are then preserved by a step
   *because every witness of an adjacency lies outside `Δ`* (§4).
-* **The phase** (§5) is a strong induction on the number of live vertices: while `2r < T₁.diam` one
+* **The phase** (`SyncStep.lean`) is a strong induction on the number of live vertices: while `2r < T₁.diam` one
   synchronised step strictly decreases it (`FoldStep.card_lt`), and the invariant — including
   `T₁.diam = T₂.diam`, re-derived from the distance agreement on `C` — is preserved.  The phase stops
   exactly at `T₁.diam = 2r`.
-* **The endgame** (§6): folding `T₁` along its leg and `T₂` along *its* leg (the spine followed by
+* **The endgame** (`SyncEndgame.lean`): folding `T₁` along its leg and `T₂` along *its* leg (the spine followed by
   the `P`-tail) gives the same state, because the two composites `ρ ∘ σ ∘ P.rep` and
-  `ρ' ∘ σ ∘ Q.rep` agree pointwise: on `C` this is `legPath_rep_rep`, on the tails the `σ`-images
-  are computed with `legPath_rep_tail`, and every folded vertex is fixed by `σ`.
+  `ρ' ∘ σ ∘ Q.rep` agree pointwise (`legAt_rep_comp`). Off the original tails, both representatives
+  agree; on the tails, `σ` fixes both the surviving tail and the corresponding spine vertex.
 -/
 import OhtoaiTreeProof.Phase3
 import OhtoaiTreeProof.CommonDist
@@ -455,75 +452,16 @@ end DiamPath
 
 end OhtoaiTreeProof
 
-/-! ## 5. What remains for the unconditional `exchange`
+/-! ## 5. Completion downstream
 
-Everything in this file is sorry-free (no `sorry`, no `axiom`, no `native_decide`, no
-`maxHeartbeats`), and `lake build OhtoaiTreeProof.Sync` is green.
+`SyncStep.lean` proves `SyncCtx.step` and `SyncCtx.reach_scale`, preserving this invariant without
+adding fields. `SyncEndgame.lean` proves `legAt_rep_comp` and `SyncCtx.commonEndgame`, then assembles
+`DiamPath.synchronized_exchange`.
 
-### The shape of the remaining argument
-
-`OhtoaiTreeProof/ExchangeProof.lean` reduces `exchange` to a single statement
-(`exists_commonEndgame`): from `P.foldState` and `Q.foldState` one must reach, by the *same* number
-`m` of folds towards `s`, two states `T₁`, `T₂` that admit one further *common* fold towards `s`.
-The case `m = 0` is `endgame`/`endgame_of_diam`/`exchange_of_diam_eq` of that file, i.e. the case
-`T₁.diam = T₂.diam = 2r` where `r = P.D - P.meetIdx Q`.
-
-What this file supplies for the missing case `T₁.diam > 2r`:
-
-* `GeodAvoid` and `geod_fold`/`geod_fold_Q`: the geodesic property — from `s` to every live vertex
-  outside `Δ` there is a geodesic whose vertices stay outside `Δ` — holds for `P.foldState` and
-  `Q.foldState`;
-* `GeodAvoid.fold`: this property is preserved by a fold along a path contained in the complement
-  of `Δ`;
-* `SeqPath` (+ `SeqPath.dist_eq`): the legs of the two states stay paths (so both diameters stay
-  `≥ 2r`) throughout the phase;
-* `SyncCtx`: the invariant of the phase, with the composite `σ` of the synchronised folds explicit:
-  `T₁` and `T₂` are the `σ`-images of `P.foldState` and `Q.foldState` with the same witness
-  description of their edges (`alive₁`, `alive₂`, `adjdesc₁`, `adjdesc₂`), `σ` fixes `Δ` and the
-  spine and maps the common part into itself (`sigma_delta`, `sigma_common`, `sigma_spine`), and
-  `SyncCtx.dist_eq_on_common` proves that distances from `s` agree on the common part `C` (this is
-  what preserves `Phase1Inv.diam_eq` along the phase);
-* `SyncCtx.init`: the invariant holds at the start, with `σ = id`;
-* `SyncCtx.sync_diamPath` (**obligation 4.3**): a diameter path of `T₁` starting at `s` and avoiding
-  `Δ` is *also* a diameter path of `T₂` with the same vertices — so the fold prescribed by the phase
-  is a single synchronised step of both states.
-
-### The remaining subgoal
-
-After the phase has been run to its stopping point (`T₁.diam = T₂.diam = 2r`, `r ≥ 1`), the legs
-
-```
-L₁ = p 0, …, p r, q (ℓ+1), …, q D      L₂ = p 0, …, p r, p (ℓ+1), …, p D
-```
-
-are diameter paths of `T₁` resp. `T₂` (`SyncCtx.leg₁`, `SyncCtx.leg₂`, with `legSeq_two_mul` and
-`dist_leg`), and one needs `CommonEndgame T₁ T₂ s`, i.e. that folding `T₁` along `L₁` and `T₂`
-along `L₂` yields the *same* state.  By `ExchangeProof.foldState_eq_of_rep_comp` it suffices to
-prove the pointwise identity
-
-```
-∀ v : V, v ∈ S.alive → L₁.rep (σ (P.rep v)) = L₂.rep (σ (Q.rep v)),
-```
-
-i.e. the generalisation of `ExchangeProof.legPath_rep_rep` (the case `σ = id`) to a pair of states
-reached by the synchronised phase.  This single identity is the smallest remaining subgoal; the
-phase itself (strong induction on `T₁.alive.card` as long as `2 * r < T₁.diam`) is then
-`SyncCtx.sync_diamPath` + `GeodAvoid.fold` + `SyncCtx.init` + `two_le_card_of_two_le_diam`
-(`FoldStep.card_lt` gives the termination).
-
-### Why the identity is not a formal consequence of `SyncCtx`
-
-Two facts, checked during the attempts, show that the naive "commutation" proof cannot work, and
-that the invariant must be strengthened:
-
-* the folding map `ρ` of a step does **not** commute with `L₁.rep` on `T₁.alive`: if `a = Z.seq m`
-  lies on the far half of the step's diameter path (`m > Z.D / 2`, `Z.D > 2r`), then `ρ a ≠ a`,
-  whereas `L₁.rep a = a`.  Indeed `a ∈ C ∩ V(Z)`, and no vertex of `V(Z)` is a vertex of the leg:
-  at index `> r` the leg lies in `Δ`, while `Z ⊆ C`.  Hence `ρ₁ ∘ ρ ≠ ρ₁` on the image of `σ`;
-* what is true instead is that `C ∩ V(L₁) = {p 0, …, p r} = C ∩ V(L₂)`, so the two endgame folding
-  maps *agree on `C`*; a step moves the vertex `a` above only inside `C`.  The invariant that
-  survives the phase therefore has to record, for each `v`, the pair
-  `(σ (P.rep v), σ (Q.rep v))` together with its position relative to `C` and `Δ` (e.g. "both in
-  `C`", "the first in the spine, the second in the tail"), not merely the values of the two
-  folding maps.
+The endgame does not require a commutation identity between a synchronized fold and an endgame
+fold. Instead it compares the two composite maps on each original vertex. Outside the tail set
+the initial representatives agree; their common image is either in the common part (which both
+endgame maps fix) or is an off-path vertex in the difference region (fixed by all maps). A tail
+vertex has one representative on the spine and one on the surviving tail, both fixed by `σ`;
+the appropriate endgame fold identifies them. The existing fields of `SyncCtx` suffice.
 -/

@@ -24,7 +24,7 @@ set_option linter.unusedSectionVars false
 
 namespace OhtoaiTreeProof
 
-open SimpleGraph
+open _root_.SimpleGraph
 
 variable {V : Type*} [Fintype V] [DecidableEq V]
 

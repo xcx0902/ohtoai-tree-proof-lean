@@ -18,17 +18,16 @@ The two structural statements are
   the same rooted tree.
 
 Lemma 3 is proved in `OhtoaiTreeProof/Cone.lean` (from the height bound of Lemma 1 and the cone
-lemma of Lemma 2, `REF.md` §3–§5); the only `sorry` left here is Lemma 5.
+lemma of Lemma 2, `REF.md` §3–§5). Lemma 5 is assembled in `SyncEndgame.lean`, using the
+synchronized phase proved in `SyncStep.lean`.
 -/
-import OhtoaiTreeProof.Cone
-import OhtoaiTreeProof.PathExists
-import OhtoaiTreeProof.Progress
+import OhtoaiTreeProof.SyncEndgame
 
 set_option linter.unusedSectionVars false
 
 namespace OhtoaiTreeProof
 
-open SimpleGraph
+open _root_.SimpleGraph
 
 variable {V : Type*} [Fintype V] [DecidableEq V]
 
@@ -42,13 +41,15 @@ after the same number of operations.
 `REF.md` proves this by writing the two diameters as a common path `s = p 0, …, p ℓ = w` followed
 by two tails `w = a 0, …, a r = x` and `w = b 0, …, b r = y` of equal length (`ℓ = D - r`, since
 both are diameters): after folding along one of them the vertex `a t` sits at depth `r - t`, i.e.
-it is identified with `p (r - t)`, and the two trees differ only inside the ball of radius `r`
-around `w` — a ball that is destroyed by the first `r` further folds, all of which act on both
-trees in the same way. -/
+it is identified with `p (r - t)`. The difference region lies within distance `2r` of `s`.
+While the diameter exceeds `2r`, both states fold along the same path outside that region.
+The surviving legs force the phase to stop at diameter exactly `2r`; folding those legs then
+produces the same state, from which a common completion exists. Coincident diameters are handled
+directly, including when the first fold already leaves a singleton. -/
 theorem exchange {S : TreeState V} {s : V} (hs : IsDiamEnd S s) (P Q : DiamPath S)
     (hP : P.p 0 = s) (hQ : Q.p 0 = s) :
     ∃ n : ℕ, LValue P.foldState s n ∧ LValue Q.foldState s n := by
-  sorry
+  exact P.synchronized_exchange Q hs hP hQ
 
 /-! ## Proposition 1 of `REF.md`: uniqueness for a fixed endpoint -/
 

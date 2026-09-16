@@ -1,29 +1,14 @@
 /-
-# REF.md §7, phase 3: the synchronised induction
+# REF.md §7: auxiliary closure and degenerate-case lemmas
 
-`REF.md` Lemma 5 (the *delayed exchange lemma*) is reduced in `OhtoaiTreeProof/ExchangeProof.lean` to
-the single statement `exists_commonEndgame`: from the two states `P.foldState`, `Q.foldState`
-obtained by folding a tree `S` along two diameters `P`, `Q` starting at the same diameter endpoint
-`s`, there are complete folding processes towards `s` of the same length whose last step is
-*common* (the same fold, giving the same tree).  This file proves the synchronised phase of §7 that
-produces those processes.
+This file studies a sufficient path-avoidance condition `DeltaClosed`, records its consequences
+in `SyncInv`, and proves equality of the first-fold states when the initial diameters coincide.
+It also packages some immediate endgame cases with their nondegeneracy hypotheses.
 
-The mathematical content is `REF.md` §7: writing `r = D - ℓ` (`ℓ = P.meetIdx Q`), while the common
-diameter `H` of the two states is larger than `2r` the two states fold *identically* along one and
-the same diameter path, and every difference between them stays inside the ball of radius `2r`
-around `s`.  The pieces are:
-
-* **§1–§2**, the descent property of the difference region `Δ = P.Delta Q s`: `Δ` is closed under
-  moving away from `s` (`DeltaClosed`), which is what makes the far part of a diameter path of one
-  state a path of the other (`notMem_Delta_of_far`, `commonDiamPathOf`).
-* **§3–§4**, the invariant `SyncInv` of the synchronised phase — `Phase1Inv` together with the
-  descent property and the two *legs* `p 0, …, p r` plus the surviving tail — and its consequences:
-  on the common part the two states have the same distances from `s` (`dist_eq_on_common_of_sync`).
-* **§5**, the one-step analysis: the same vertex sequence is a diameter of both states, and after
-  folding both states along it the invariant is preserved (`SyncInv.fold`), with strictly fewer
-  vertices.
-* **§6**, the endgame `legPath_foldState_eq` of `ExchangeProof.lean` applied to the pair produced by
-  the synchronised phase, and the resulting induction.
+The full synchronised induction is proved in `SyncStep.lean`, using `SyncCtx` from `Sync.lean`.
+That invariant records avoiding geodesics directly, together with the surviving legs and the
+composite quotient map; it does not depend on an unproved `DeltaClosed` preservation statement.
+`SyncEndgame.lean` supplies the final map comparison and the unconditional exchange theorem.
 -/
 import OhtoaiTreeProof.Phase2
 import OhtoaiTreeProof.Phase1
@@ -337,93 +322,18 @@ theorem exists_commonEndgame_of_diam_of_diam_eq (P Q : DiamPath S) {s : V} (hP :
     endgame_of_diam P Q hP hQ hr hH (by rw [← hdiam]; exact hH)
       (P.meetIdx_comm Q (hP.trans hQ.symm)) (P.D_eq Q)⟩
 
-/-! ## 4. What remains: the exact obligations of the synchronised phase
+/-! ## 4. Degenerate cases and the completed synchronised proof
 
-The statements below are *not* proved here (they are the missing input of the induction); they are
-recorded in the exact form in which the present file would consume them.
+An unconditional claim that the two first-fold states eventually admit a common *further fold*
+is false: folding a single edge already leaves a singleton, from which no legal fold exists.
+The immediate endgame lemmas above therefore include nondegeneracy hypotheses.
 
-### 4.1 The descent property of `Δ` for the initial pair
-
-`SyncInv` requires `DeltaClosed` for the two states, and neither `Phase1Inv` nor any lemma of
-`Phase1.lean` provides it.  For the initial pair the proof reduces as follows.  Write `T₁ =
-P.foldState`.  If `v ∈ Δ ∩ T₁.alive`, then `v ∉ P.pathSet`
-(`notMem_pathSet_of_mem_Delta_foldAlive` above: `P.seq_mem_Delta_iff` forces `i > ℓ` while liveness
-forces `2i ≤ D`, and `2r ≤ D` gives `ℓ ≥ D/2`), hence `P.rep v = v` and `P.rep ⁻¹' {v} = {v}`: a
-preimage `x` with `P.rep x = v` either is off the path (`rep_of_index_none`, so `x = v`) or is a
-path vertex, whose image is again a path vertex (`rep_of_index_some`), contradiction.  So a
-`T₁`-neighbour `w` of `v` is `P.rep y` for an `S`-neighbour `y` of `v`, and — `v` being off the path
-— the `S`-neighbours of `v` are the neighbours of `v` in `S` minus the diameter, one of which is the
-unique path vertex adjacent to `v` and the others are off the path (`rep` is the identity on them).
-Two cases remain: `y` off the path (then `w = y` and one concludes `w ∈ Δ` from
-`mem_Delta_of_dist_eq_add`, the crucial point being that `dist s y = dist s v + 1` in `S` — this uses
-that `v ∈ Δ` is itself described by a tail vertex, so that the `S`-path from `s` to `v` reaches `v`
-from the tail side; note that folding can shorten `dist s v` strictly, so this equality is *not* a
-formal consequence of the preceding bounds and is the technical heart of the case), and `y = p i` on
-the path (then `w = p (min i (D - i))` and `w ∈ Δ` follows from
-`Δ`'s description on the diameter).  This is the only mathematical content of the synchronised phase
-that is *not* yet formalised.
-
-```
-theorem deltaClosed_fold (P Q : DiamPath S) {s : V} (hP : P.p 0 = s) (hQ : Q.p 0 = s) :
-    DeltaClosed P.foldState (P.Delta Q s) s
-
-theorem deltaClosed_fold' (P Q : DiamPath S) {s : V} (hP : P.p 0 = s) (hQ : Q.p 0 = s) :
-    DeltaClosed Q.foldState (P.Delta Q s) s
-```
-
-Preservation is cheap once the step is set up: for a vertex `x` of `T₁` with `Z.rep x ∉ Δ` one has
-`x ∉ Δ` (if `x ∉ Z` then `Z.rep x = x`; if `x ∈ Z` then `Z.rep x ∈ Z ⊆ C`), so a `T₁`-geodesic from
-`s` to a vertex of `C` is carried by `Z.rep` to a walk of the folded state whose vertices all lie in
-`C`; the geodesic of the folded state is the `bypass` of that walk
-(`SimpleGraph.Walk.support_bypass_subset_support` and `SimpleGraph.IsAcyclic.path_unique`), so it
-avoids `Δ` as well.
-
-### 4.2 The lower bound `2 r ≤ T.diam` (the legs survive)
-
-The endgame needs `H = 2 r`, so the synchronised phase has to stop *at* `2 r` and not below it.  The
-witness is the leg `p 0, …, p r, q (ℓ+1), …, q D` of `P.foldState` (resp. `q 0, …, q r,
-p (ℓ+1), …, p D` of `Q.foldState`), a path of length `2 r` from `s`: its first half is the spine
-`p 0, …, p r`, at distance `≤ r < H/2` from `s` and hence fixed by any fold along a diameter of
-length `H > 2 r`, while the `Q`-tail (resp. `P`-tail) lies in `Δ` and therefore off the folded
-diameter `Z ⊆ C`; so every vertex of the leg is fixed by `Z.rep` and every edge of the leg survives
-in the folded graph, and the leg remains a path of length `2 r`.
-
-### 4.3 The endgame at the pair produced by the phase
-
-`ExchangeProof.endgame_of_diam` is stated for the *initial* pair `P.foldState`, `Q.foldState` only:
-its proof compares the two composite maps `Z₁.rep ∘ P.rep` and `Z₂.rep ∘ Q.rep` vertex by vertex
-(`legPath_rep_rep`).  At the pair `T₁`, `T₂` reached by the phase one needs the corresponding
-comparison for the composites `Z₁.rep ∘ σ₁`, `Z₂.rep ∘ σ₂`, where `σᵢ` is the quotient map of the
-synchronised folds.  Two honest routes:
-
-* maintain `σ₁`, `σ₂` in the invariant and prove `Z₁.rep (σ₁ v) = Z₂.rep (σ₂ v)` for all `v`
-  (a generalisation of `ExchangeProof.legPath_rep_rep` by induction on the number of synchronised
-  folds — the hard part is the tail analysis for the newly folded vertices); or
-* at `H = 2 r` construct the tree `S'' = T₁ ∪ T₂` (the two states glued along their common part),
-  with `P''` the leg of `T₂` and `Q''` the leg of `T₁`; folding `S''` along `P''` gives `T₁` and
-  along `Q''` gives `T₂`, and `endgame_of_diam` applied to `(S'', P'', Q'')` yields
-  `CommonEndgame T₁ T₂ s` directly, without touching the pairing of `S`.
-
-### 4.4 The statement proved here
-
-Two instances of the headline are proved above: `exists_commonEndgame_of_diam_of_diam_eq` (the case
-`H = 2 r`, via `endgame_of_diam`) and `exists_commonEndgame_of_diam_of_tail_eq_zero` (the case
-`r = 0`, via `foldState_eq_of_tail_eq_zero` and `commonEndgame_self`).  The full statement
-
-```
-theorem exists_commonEndgame_of_diam (P Q : DiamPath S) {s : V} (hs : IsDiamEnd S s)
-    (hP : P.p 0 = s) (hQ : Q.p 0 = s) (hdiam : P.foldState.diam = Q.foldState.diam) :
-    ∃ m T₁ T₂, FoldSeqAt s P.foldState T₁ m ∧ FoldSeqAt s Q.foldState T₂ m ∧
-      CommonEndgame T₁ T₂ s
-```
-
-is **false as stated** in the degenerate case.  If `S` is a single edge (`P.D = 1`) then
-`P.foldState` is a single vertex: `FoldSeqAt` admits no step (`2 ≤ S.alive.card` fails) and a state
-with one vertex has no `DiamPath` with `1 ≤ D` (`DiamPath.diam_eq_D`), so `CommonEndgame` is
-unprovable.  The statement has to carry the nondegeneracy hypothesis `1 ≤ P.foldState.diam`
-(equivalently `2 ≤ P.D`, equivalently `2 ≤ P.foldState.alive.card`): it is exactly what
-`CommonEndgame` requires, and it holds in the interesting case since `2 * r ≤ P.foldState.diam`
-(`ExchangeLemma5.two_mul_tail_le`), the endgame case `H = 2 r` being then `H ≥ 2`.-/
+`DiamPath.synchronized_exchange` is expressed instead through equal-length completions.
+For coincident diameters it uses `foldState_eq_of_tail_eq_zero`, including singleton results.
+For positive tail length it uses `SyncCtx.reach_scale` and `SyncCtx.commonEndgame`.
+The former terminates by live vertex count while preserving legs of length `2r`; the latter
+compares the full composite maps `psi₁ ∘ sigma ∘ P.rep` and `psi₂ ∘ sigma ∘ Q.rep`, not merely
+the visible tails. These results are proved in `SyncStep.lean` and `SyncEndgame.lean`. -/
 
 end DiamPath
 

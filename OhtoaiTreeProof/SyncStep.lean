@@ -16,20 +16,6 @@ open _root_.SimpleGraph
 
 variable {V : Type*} [Fintype V] [DecidableEq V]
 
-/-- Reading a path in two acyclic graphs gives the same distance. -/
-theorem GeodAvoid.dist_eq {T U : TreeState V} {D : Set V} {s x : V}
-    (h : GeodAvoid T D s)
-    (hadj : ∀ u v, u ∉ D → v ∉ D → (T.graph.Adj u v ↔ U.graph.Adj u v))
-    (hx : x ∈ T.alive) (hxD : x ∉ D) :
-    T.graph.dist s x = U.graph.dist s x := by
-  obtain ⟨p, hp, hlen, havoid⟩ := h x hx hxD
-  have heq := dist_eq_of_seq U.acyclic
-    (fun k hk => (hadj _ _ (havoid k (by omega))
-      (havoid (k + 1) (by omega))).mp (p.adj_getVert_succ hk))
-    (fun k hk l hl hkl => hp.getVert_injOn hk hl hkl)
-  rw [SimpleGraph.Walk.getVert_zero, SimpleGraph.Walk.getVert_length] at heq
-  exact (heq.trans hlen).symm
-
 namespace DiamPath
 
 variable {S T U : TreeState V}
@@ -321,32 +307,10 @@ theorem reach_scale_aux (hP : P.p 0 = s) (hQ : Q.p 0 = s) :
         have := h.lower_diam.1
         omega
       obtain ⟨Z, Z₂, hZ, hZ₂, hnext⟩ := h.step hP hQ hH
-      have hpos₁ : 2 ≤ T₁.alive.card := by
-        have hd : 1 ≤ Z.D := by rw [← Z.diam_eq_D]; omega
-        have hne : Z.p 0 ≠ Z.p Z.last := by
-          intro he
-          have := congrArg Fin.val (Z.inj he)
-          simp only [Fin.val_zero, last] at this
-          omega
-        have hc := Finset.card_le_card
-          (show ({Z.p 0, Z.p Z.last} : Finset V) ⊆ T₁.alive by
-            intro v hv
-            simp only [Finset.mem_insert, Finset.mem_singleton] at hv
-            rcases hv with rfl | rfl
-            · exact Z.mem 0
-            · exact Z.mem Z.last)
-        rw [Finset.card_pair hne] at hc
-        exact hc
-      have hpos₂ : 2 ≤ T₂.alive.card := by
-        by_contra hc
-        have hdiam0 : T₂.diam = 0 := by
-          obtain ⟨x, hx, hxd⟩ := h.end₂.2
-          have hsx : s = x := (Finset.card_le_one.mp (by omega)) _ h.end₂.1 _ hx
-          rw [hsx, SimpleGraph.dist_self] at hxd
-          exact hxd.symm
-        have hh := h.diam_eq
-        rw [hdiam0] at hh
-        omega
+      have hpos₁ : 2 ≤ T₁.alive.card :=
+        Z.two_le_card (by rw [← Z.diam_eq_D]; omega)
+      have hpos₂ : 2 ≤ T₂.alive.card :=
+        Z₂.two_le_card (by rw [← Z₂.diam_eq_D, ← h.diam_eq]; omega)
       have hlt := FoldStep.card_lt (S := T₁) ⟨Z, rfl⟩ hpos₁
       obtain ⟨m, U₁, U₂, τ, h₁, h₂, hctx, hdiam⟩ :=
         ih Z.foldState.alive.card (by omega) Z.foldState Z₂.foldState _ le_rfl hnext

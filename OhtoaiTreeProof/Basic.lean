@@ -37,7 +37,8 @@ variable {V : Type*} [Fintype V] [DecidableEq V]
 /-! ## States of the process -/
 
 /-- A state of the folding process: a tree whose vertices are the elements of a finset
-`alive`, all other vertices of the ambient type being isolated. -/
+`alive`, all other vertices of the ambient type being isolated. The empty live set is also
+allowed; folds of nonempty states remain nonempty. -/
 structure TreeState (V : Type*) [Fintype V] where
   /-- the vertices of the tree -/
   alive : Finset V
@@ -485,7 +486,7 @@ theorem isDiag_map_rep_pe_of_mirror_eq (i : Fin P.D) (h : P.mirror i = i) :
 
 /-! ## The redundant edges of the diameter -/
 
-/-- The indices of the second half of the diameter's edges: those are `D / 2` many, and each of
+/-- The indices of the second half of the diameter's edges: those are `D - D / 2` many, and each of
 them is either the mirror of an edge of the first half (with the same folded image) or the
 central edge (which folds to a loop). -/
 def badIdx : Finset (Fin P.D) :=
@@ -762,7 +763,8 @@ end DiamPath
 
 /-! ## The folding process -/
 
-/-- One folding step: `S'` is obtained from `S` by folding along some diameter. -/
+/-- The image of a fold along some diameter. This relation also allows the identity fold of a
+singleton; `FoldSeq.step` separately requires at least two live vertices for a legal operation. -/
 def FoldStep (S S' : TreeState V) : Prop := ∃ P : DiamPath S, S' = P.foldState
 
 /-- `FoldSeq S S' n`: `S'` is obtained from `S` by `n` folding operations.  In a state with at
@@ -773,7 +775,8 @@ inductive FoldSeq : TreeState V → TreeState V → ℕ → Prop
   | step {S S' S'' : TreeState V} {n : ℕ} (hpos : 2 ≤ S.alive.card) :
       FoldStep S S' → FoldSeq S' S'' n → FoldSeq S S'' (n + 1)
 
-/-- A state consisting of a single vertex. -/
+/-- A terminal state with at most one live vertex. For a sequence starting from a nonempty
+state, `FoldSeq.card_eq_one` shows that a terminal state has exactly one vertex. -/
 def IsSingle (S : TreeState V) : Prop := S.alive.card ≤ 1
 
 /-! ## Diameter endpoints -/
@@ -809,9 +812,9 @@ along which we fold starts at `s`, so that `s` is one of the two vertices being 
 def FoldStepAt (s : V) (S S' : TreeState V) : Prop :=
   ∃ P : DiamPath S, P.p 0 = s ∧ S' = P.foldState
 
-/-- `FoldSeqAt s S S' n`: `S'` is obtained from `S` by `n` folding steps, each of them performed
-towards the fixed vertex `s`.  No step is taken from a state with at most one vertex, so the
-sequence is *maximal*: it stops as soon as a single vertex is left. -/
+/-- `FoldSeqAt s S S' n`: `S'` is obtained from `S` by `n` legal folding steps towards `s`.
+This relation includes unfinished prefixes. A complete sequence additionally satisfies
+`IsSingle S'`, as required by `LValue`. -/
 inductive FoldSeqAt (s : V) : TreeState V → TreeState V → ℕ → Prop
   | refl (S : TreeState V) : FoldSeqAt s S S 0
   | step {S S' S'' : TreeState V} {n : ℕ} (hpos : 2 ≤ S.alive.card) :

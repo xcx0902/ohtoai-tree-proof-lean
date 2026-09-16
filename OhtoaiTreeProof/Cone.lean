@@ -18,8 +18,8 @@ This file formalises `REF.md` §4 and §5:
 * **Stage 3** — **Lemma 3 of `REF.md`**, `OhtoaiTreeProof.isDiamEnd_foldState`: folding along a
   diameter towards the endpoint `P.p 0` keeps `P.p 0` a diameter endpoint.
 
-The only ingredient taken on faith is `DiamPath.foldGraph_isAcyclic` (`Basic.lean`), the acyclicity
-of the folded graph, which is proved elsewhere.
+The acyclicity of the folded graph is supplied by the proved theorem
+`DiamPath.foldGraph_isAcyclic` in `Basic.lean`.
 
 The auxiliary declarations of Stage 3 are prefixed `foldCone_` to keep them apart from the folding
 lemmas that live in `Basic.lean`.
@@ -157,7 +157,7 @@ theorem dist_le_max {H : SimpleGraph W} (hH : H.IsAcyclic) {m : ℕ} {q : ℕ �
     simpa using dist_eq_dist_add_of_ge hH hadj hxq hinj him hmini 0 (Nat.zero_le _)
   have hyj : H.dist y (q 0) = H.dist y (q j) + j := by
     simpa using dist_eq_dist_add_of_ge hH hadj hyq hinj hjm hminj 0 (Nat.zero_le _)
-  -- the geodesic from `x` to `y` passes through `q i` and `q j`
+  -- The walk through the attachment points bounds the distance, even when they coincide.
   have htri : H.dist x y ≤ H.dist x (q i) + H.dist (q i) (q j) + H.dist y (q j) := by
     have h1 : H.dist x y ≤ H.dist x (q i) + H.dist (q i) y := (hxq i him).dist_triangle_left y
     have h2 : H.dist (q i) y ≤ H.dist (q i) (q j) + H.dist (q j) y :=
@@ -252,24 +252,14 @@ variable {S : TreeState V} (P : DiamPath S)
 
 /-- An edge of the tree is mapped by the folding map to a walk of length at most one. -/
 theorem foldCone_walk_of_adj {a b : V} (h : S.graph.Adj a b) :
-    ∃ w : P.foldGraph.Walk (P.rep a) (P.rep b), w.length ≤ 1 := by
-  rcases eq_or_ne (P.rep a) (P.rep b) with heq | hne
-  · exact ⟨SimpleGraph.Walk.nil.copy heq.symm rfl, by simp⟩
-  · exact ⟨SimpleGraph.Walk.cons ⟨hne, P.rep_mem_foldAlive (S.adj_alive h).1,
-      P.rep_mem_foldAlive (S.adj_alive h).2, a, b, h, rfl, rfl⟩ SimpleGraph.Walk.nil, le_rfl⟩
+    ∃ w : P.foldGraph.Walk (P.rep a) (P.rep b), w.length ≤ 1 :=
+  P.exists_walk_rep_of_adj h
 
 /-- A walk of the tree is mapped by the folding map to a walk of the folded tree of no greater
 length. -/
 theorem foldCone_walk_le {a b : V} (w : S.graph.Walk a b) :
-    ∃ w' : P.foldGraph.Walk (P.rep a) (P.rep b), w'.length ≤ w.length := by
-  induction w with
-  | nil => exact ⟨SimpleGraph.Walk.nil, le_rfl⟩
-  | cons hadj rest ih =>
-      obtain ⟨u, hu⟩ := P.foldCone_walk_of_adj hadj
-      obtain ⟨w', hw'⟩ := ih
-      refine ⟨u.append w', ?_⟩
-      rw [SimpleGraph.Walk.length_append, SimpleGraph.Walk.length_cons]
-      omega
+    ∃ w' : P.foldGraph.Walk (P.rep a) (P.rep b), w'.length ≤ w.length :=
+  P.exists_fold_walk_le w
 
 /-! ### Which vertices of the ambient type lie in the folded tree -/
 

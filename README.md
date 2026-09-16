@@ -44,6 +44,12 @@ fixed type.
 | `FoldStepAt s`, `FoldSeqAt s`, `LValue S s n` | the fixed-endpoint process: fold along a diameter that starts at `s` |
 | `IsSingle S` | `S.alive.card ≤ 1` |
 
+`TreeState` also permits an empty live set, but an actual process from a nonempty tree cannot
+reach it (`FoldSeq.alive_nonempty`). Thus a terminal state of such a process has exactly one
+vertex (`FoldSeq.card_eq_one`). `FoldStep` alone includes the identity fold on a singleton;
+the cardinality premise in `FoldSeq.step` excludes it from counted operations. Both sequence
+relations allow unfinished prefixes; completeness is the additional terminal-state condition.
+
 `rep` is idempotent (`rep_idem`), which is what lets the folded tree be written as a graph on the
 same vertex type — this is also the formal counterpart of "taking the quotient" in `REF.md` §1.
 
@@ -53,6 +59,7 @@ same vertex type — this is also the formal counterpart of "taking the quotient
 | --- | --- | --- |
 | `fold_count_unique` | Any two complete folding processes of a state have the same number of operations. | **Proved** from `Phi_step` |
 | `fold_count_unique_of_isTree` | The same for a plain tree `G : SimpleGraph V` with `G.IsTree` (the form of `REF.md`). | **Proved** |
+| `exists_complete_foldSeq_of_isTree` | Every finite tree has a legal completion ending at exactly one live vertex. | **Proved** |
 
 The assembly is complete and mirrors `REF.md` §11–13:
 
@@ -117,14 +124,26 @@ decrease of the live vertex count. The persistent legs prevent the diameter from
 ```sh
 lake build
 lake env lean OhtoaiTreeProof/AxiomAudit.lean
+lake env leanchecker --fresh OhtoaiTreeProof
 lake exe ohtoai-tree-proof
+python3 research/verify_model.py --max-n 7
 ```
 
 `AxiomAudit.lean` is imported by the library root and therefore checked by the default build.
-Its `#guard_msgs` checks assert that `exchange`, `LValue_unique`, `Phi_step`,
-`fold_count_unique`, and `fold_count_unique_of_isTree` depend only on `propext`,
-`Classical.choice`, and `Quot.sound`. An unexpected axiom, including `sorryAx`, fails the build.
+It checks every declaration owned by an imported `OhtoaiTreeProof` module, including auxiliary
+results outside the main theorem's dependency chain. Its `#guard_msgs` checks additionally record
+the exact axiom sets of the main results and completion-existence theorems. Only `propext`,
+`Classical.choice`, and `Quot.sound` are allowed; an unexpected axiom, including `sorryAx`, fails
+the build. Kernel-checked boundary examples cover unfinished prefixes, the prohibition on
+singleton operations, and the bound on sequence length.
 Every state of the process is also proved to be a tree (`DiamPath.foldGraph_isAcyclic`, `REF.md` §2).
+
+`leanchecker --fresh` replays the project and imported declarations into a fresh Lean kernel
+environment. It is a check against environment manipulation, not an independent implementation
+of Lean's kernel. `research/verify_model.py` independently checks all oriented diameter folds on
+small labelled trees, tree preservation, cardinality, distance contraction, and endpoint
+preservation. It also tests paths, singleton termination, unchanged star diameter, and the
+Appendix A counterexample. See [`AUDIT.md`](AUDIT.md) for the verification findings.
 
 The development was also checked
 against the computational experiments in `research/verify_invariance.py` (exhaustive over all

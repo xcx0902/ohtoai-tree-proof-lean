@@ -96,35 +96,23 @@ theorem LValue_of_dist_eq_diam {S : TreeState V} {s t : V} (hs : IsDiamEnd S s)
   · obtain ⟨S₁, h₁, -⟩ := h
     rw [FoldSeqAt.eq_zero_of_card_le_one h₁ hcard]
     exact ⟨S, FoldSeqAt.refl S, hcard⟩
-  · -- there is at least one operation to perform
-    have hnpos : 1 ≤ n := by
-      rcases Nat.eq_zero_or_pos n with hn0 | hpos
-      · obtain ⟨S₁, h₁, hs₁⟩ := h
-        rw [FoldSeqAt.eq_of_zero h₁ hn0] at hs₁
-        exact absurd hs₁ hcard
-      · exact hpos
-    obtain ⟨m, hm⟩ : ∃ m, n = m + 1 := ⟨n - 1, by omega⟩
-    subst hm
-    have hcard2 : 2 ≤ S.alive.card := by omega
+  · have hcard2 : 2 ≤ S.alive.card := by omega
     obtain ⟨P, hP0, hPlast⟩ := exists_diamPath_between S hs ht hd
     -- a complete process from the folded state, towards `s`
-    obtain ⟨m', hm'⟩ := LValue_exists_of_isDiamEnd P.foldState.alive.card P.foldState (P.p 0)
+    obtain ⟨m, hm⟩ := LValue_exists_of_isDiamEnd P.foldState.alive.card P.foldState (P.p 0)
       le_rfl (isDiamEnd_foldState P)
-    obtain ⟨T, hT, hT1⟩ := hm'
-    have hT' : FoldSeqAt s P.foldState T m' := by rw [← hP0]; exact hT
+    obtain ⟨T, hT, hT1⟩ := hm
+    have hT' : FoldSeqAt s P.foldState T m := by rw [← hP0]; exact hT
     have hstep : FoldStepAt s S P.foldState := ⟨P, hP0, rfl⟩
-    have hL1 : LValue S s (m' + 1) := ⟨T, FoldSeqAt.step hcard2 hstep hT', hT1⟩
     -- Proposition 1 identifies the two lengths
     obtain ⟨S₁, hS₁, hs₁⟩ := h
-    obtain ⟨T₁, hT₁, hT₁1⟩ := hL1
-    have huniq : m + 1 = m' + 1 :=
-      LValue_unique S.alive.card S S₁ T₁ s (m + 1) (m' + 1) le_rfl hs hS₁ hT₁ hs₁ hT₁1
-    have hmm : m' = m := by omega
+    have hlength : n = m + 1 :=
+      LValue_unique S.alive.card S S₁ T s n (m + 1) le_rfl hs hS₁
+        (FoldSeqAt.step hcard2 hstep hT') hs₁ hT1
+    rw [hlength]
     -- fold the other way round along the same diameter
-    have hbase : LValue P.foldState (P.p 0) m := by
-      rw [← hmm]
-      exact ⟨T, hT, hT1⟩
-    have hrev : LValue P.reverse.foldState (P.p P.last) m := (lValue_foldState_reverse P m).mp hbase
+    have hrev : LValue P.reverse.foldState (P.p P.last) m :=
+      (lValue_foldState_reverse P m).mp ⟨T, hT, hT1⟩
     obtain ⟨T₂, hT₂, hT₂1⟩ := hrev
     have hT₂' : FoldSeqAt t P.reverse.foldState T₂ m := by rw [← hPlast]; exact hT₂
     have hrevStep : FoldStepAt t S P.reverse.foldState :=
@@ -185,6 +173,14 @@ theorem Phi_step {S S' : TreeState V} (h : FoldStep S S') (hcard : 2 ≤ S.alive
 
 /-! ## The main theorem -/
 
+/-- Every nonempty state has a legal completion ending at exactly one live vertex. -/
+theorem exists_complete_foldSeq (S : TreeState V) (hne : S.alive.Nonempty) :
+    ∃ S' n, FoldSeq S S' n ∧ S'.alive.card = 1 := by
+  obtain ⟨s, hs⟩ := exists_isDiamEnd hne
+  obtain ⟨n, S', hseq, hsingle⟩ :=
+    LValue_exists_of_isDiamEnd S.alive.card S s le_rfl hs
+  exact ⟨S', n, hseq.toFoldSeq, hseq.toFoldSeq.card_eq_one hne hsingle⟩
+
 /-- The value decreases by exactly one at every step of any complete folding process. -/
 theorem Phi_eq_of_foldSeq {S S' : TreeState V} {n : ℕ} (h : FoldSeq S S' n) :
     Phi S = Phi S' + n := by
@@ -213,6 +209,12 @@ def TreeState.ofIsTree {G : SimpleGraph V} (hG : G.IsTree) : TreeState V where
   adj_alive := fun _ _ _ => ⟨Finset.mem_univ _, Finset.mem_univ _⟩
   connected := fun u _ v _ => hG.connected u v
   acyclic := hG.isAcyclic
+
+/-- The complete processes quantified over in the main theorem exist for every finite tree. -/
+theorem exists_complete_foldSeq_of_isTree {G : SimpleGraph V} (hG : G.IsTree) :
+    ∃ S' n, FoldSeq (TreeState.ofIsTree hG) S' n ∧ S'.alive.card = 1 := by
+  obtain ⟨v⟩ := hG.connected.nonempty
+  exact exists_complete_foldSeq (TreeState.ofIsTree hG) ⟨v, Finset.mem_univ v⟩
 
 /-- **Main theorem, in the form of `REF.md`.**  Let `G` be a tree.  Fold it along an arbitrary
 diameter (identifying mirror-image vertices `d i ~ d (D - i)` of that diameter), and repeat until

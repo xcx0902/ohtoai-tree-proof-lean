@@ -18,14 +18,12 @@ and the **assembly**:
   The proof goes through the composite maps `σ₁ = ρ₁ ∘ P.rep` and `σ₂ = ρ₂ ∘ Q.rep` (`ρ₁`, `ρ₂`
   being the folding maps of the two legs): one checks vertex by vertex that `σ₁ = σ₂`
   (`legPath_rep_rep`).  Both folded states are then the "image" of `S` under that single map, which
-  makes their vertex sets (`legPath_foldAlive_eq`) and their edge relations
-  (`legPath_foldGraph_adj`) equal.
+  makes their vertex sets and edge relations equal (`foldState_eq_of_rep_comp`).
 
 * **The assembly (§4).**  A synchronised phase followed by the endgame gives, for the two states
-  `P.foldState`, `Q.foldState`, complete folding processes of the same length: `exchange_of_endgame`
-  reduces `exchange` to the single remaining input, namely that the synchronised phase can be run
-  until the diameter is `2r` and that the endgame then applies to the pair it produces
-  (obligations (a)/(b) of `ExchangeLemma5.lean` §4).
+  `P.foldState`, `Q.foldState`, complete folding processes of the same length:
+  `exchange_of_commonEndgame` appends the same completion on both sides. The synchronised phase
+  and its general endgame are proved in `SyncStep.lean` and `SyncEndgame.lean`.
 -/
 import OhtoaiTreeProof.ExchangeLemma5
 import OhtoaiTreeProof.Cone
@@ -450,8 +448,8 @@ theorem legPath_foldState_eq (P Q : DiamPath S) {s : V} (hP : P.p 0 = s) (hQ : Q
       (Q.legPath P hQ hP hr₂ hdiam₂).foldState :=
   foldState_eq_of_rep_comp P Q _ _ (fun v => P.legPath_rep_rep Q hP hQ hr hdiam hmeet hD hdiam₂ v)
 
-/-- **Both folded states contain the leg**, so both diameters are at least `2 r`.  This is the easy
-half of the missing equality `P.foldState.diam = Q.foldState.diam`. -/
+/-- **Both folded states contain the leg**, so both diameters are at least `2 r`.
+Equality of the two folded diameters is proved downstream using common distances. -/
 theorem two_mul_tail_le_diam (P Q : DiamPath S) {s : V} (hP : P.p 0 = s) (hQ : Q.p 0 = s)
     (hr : 1 ≤ P.D - P.meetIdx Q) : 2 * (P.D - P.meetIdx Q) ≤ P.foldState.diam := by
   have hmem₁ : P.seq 0 ∈ P.foldState.alive := by
@@ -493,38 +491,8 @@ def CommonEndgame (T₁ T₂ : TreeState V) (s : V) : Prop :=
 /-- Two states that admit a common fold have at least two vertices each. -/
 theorem CommonEndgame.card_le {T₁ T₂ : TreeState V} {s : V} (h : CommonEndgame T₁ T₂ s) :
     2 ≤ T₁.alive.card ∧ 2 ≤ T₂.alive.card := by
-  obtain ⟨Z₁, Z₂, hD₁, hD₂, h₁, h₂, -⟩ := h
-  have hne₁ : Z₁.p 0 ≠ Z₁.p Z₁.last := by
-    intro heq
-    have hv : (0 : ℕ) = Z₁.D := by
-      have := congrArg Fin.val (Z₁.inj heq)
-      simpa using this
-    omega
-  have hne₂ : Z₂.p 0 ≠ Z₂.p Z₂.last := by
-    intro heq
-    have hv : (0 : ℕ) = Z₂.D := by
-      have := congrArg Fin.val (Z₂.inj heq)
-      simpa using this
-    omega
-  refine ⟨?_, ?_⟩
-  · have h2 : ({Z₁.p 0, Z₁.p Z₁.last} : Finset V).card = 2 := Finset.card_pair hne₁
-    have hsub : ({Z₁.p 0, Z₁.p Z₁.last} : Finset V) ⊆ T₁.alive := by
-      intro x hx
-      rw [Finset.mem_insert, Finset.mem_singleton] at hx
-      rcases hx with rfl | rfl
-      · exact Z₁.mem 0
-      · exact Z₁.mem Z₁.last
-    have := Finset.card_le_card hsub
-    omega
-  · have h2 : ({Z₂.p 0, Z₂.p Z₂.last} : Finset V).card = 2 := Finset.card_pair hne₂
-    have hsub : ({Z₂.p 0, Z₂.p Z₂.last} : Finset V) ⊆ T₂.alive := by
-      intro x hx
-      rw [Finset.mem_insert, Finset.mem_singleton] at hx
-      rcases hx with rfl | rfl
-      · exact Z₂.mem 0
-      · exact Z₂.mem Z₂.last
-    have := Finset.card_le_card hsub
-    omega
+  obtain ⟨Z₁, Z₂, hD₁, hD₂, _⟩ := h
+  exact ⟨Z₁.two_le_card hD₁, Z₂.two_le_card hD₂⟩
 
 /-- A common endgame gives one common folding step. -/
 theorem exists_foldStepAt_common {T₁ T₂ : TreeState V} {s : V} (h : CommonEndgame T₁ T₂ s) :
@@ -577,8 +545,8 @@ theorem two_le_card_of_two_le_diam (T : TreeState V) (h : 2 ≤ T.diam) : 2 ≤ 
   rw [hall u hu v hv, SimpleGraph.dist_self] at huv
   omega
 
-/-- The fixed-endpoint process always terminates (local copy of
-`LValue_exists_of_isDiamEnd` of `Exchange.lean`, which this file does not import). -/
+/-- The fixed-endpoint process always terminates. This proof is independent of exchange;
+`Exchange.lean` re-exports it as `LValue_exists_of_isDiamEnd`. -/
 theorem LValue_exists_aux : ∀ (N : ℕ) (S : TreeState V) (s : V),
     S.alive.card ≤ N → IsDiamEnd S s → ∃ n : ℕ, LValue S s n := by
   intro N
@@ -660,41 +628,15 @@ theorem exchange_of_diam_eq {S : TreeState V} {s : V} (P Q : DiamPath S) (hP : P
     (FoldSeqAt.refl Q.foldState)
     (endgame_of_diam P Q hP hQ hr hdiam hdiam₂ (P.meetIdx_comm Q (hP.trans hQ.symm)) (P.D_eq Q))
 
-/-! ## 5. What remains for the unconditional `exchange`
+/-! ## 5. The unconditional exchange theorem
 
-Everything below the synchronised phase is now proved: `exchange_of_commonEndgame` reduces
-`exchange` to the single statement
+`SyncStep.lean` proves the synchronised phase using a live-vertex-count induction.
+`SyncEndgame.lean` compares the composite quotient maps after that phase and proves
+`DiamPath.exists_commonEndgame_of_pos_tail`. The positive-tail hypothesis matters:
+an unconditional common *further fold* would be false when the first fold leaves a singleton.
 
-```
-theorem exists_commonEndgame (P Q : DiamPath S) {s : V} (hs : IsDiamEnd S s)
-    (hP : P.p 0 = s) (hQ : Q.p 0 = s) :
-    ∃ m T₁ T₂, FoldSeqAt s P.foldState T₁ m ∧ FoldSeqAt s Q.foldState T₂ m ∧
-      CommonEndgame T₁ T₂ s
-```
-
-(the same shape that `OhtoaiTreeProof/Phase1.lean` documents at the end of its file).  The lockstep
-induction that produces it has three inputs:
-
-* `P.foldState.diam = Q.foldState.diam` — the two folded states have the same diameter.  Both
-  bounds `2 * (P.D - P.meetIdx Q) ≤ P.foldState.diam` and `≤ Q.foldState.diam` are proved here
-  (`two_mul_tail_le_diam`, `two_mul_tail_le_diam'`); the reverse inequality is the open point.
-* while `T₁.diam > 2 * r`, the prescribed folds act inside the common part `C`, so they can be
-  performed simultaneously by one `DiamPath` of `T₁` that is also a `DiamPath` of `T₂`
-  (`Phase1.mem_foldAlive_iff_of_not_mem_Delta`, `Phase1.foldGraph_adj_iff_of_not_mem_Delta`);
-* the endgame: when `T₁.diam = T₂.diam = 2 * r`, the legs of the two states coincide
-  (`legPath_foldState_eq` above, together with `endgame_of_diam`), which is exactly
-  `CommonEndgame T₁ T₂ s`.
-
-Given `exists_commonEndgame`, the target theorem is
-
-```
-theorem exchange {S : TreeState V} {s : V} (hs : IsDiamEnd S s) (P Q : DiamPath S)
-    (hP : P.p 0 = s) (hQ : Q.p 0 = s) :
-    ∃ n : ℕ, LValue P.foldState s n ∧ LValue Q.foldState s n :=
-  let ⟨m, T₁, T₂, h₁, h₂, hend⟩ := exists_commonEndgame P Q hs hP hQ
-  exchange_of_commonEndgame P Q hP h₁ h₂ hend
-```
-
-(no `sorry`, no extra axiom is used anywhere in this file). -/
+`DiamPath.synchronized_exchange` handles coincident diameters by equality of their folded states
+and otherwise applies `exchange_of_commonEndgame`. `Exchange.lean` re-exports the resulting
+unconditional equal-completion-length theorem as `exchange`. -/
 
 end OhtoaiTreeProof

@@ -58,6 +58,20 @@ def GeodAvoid (T : TreeState V) (D : Set V) (s : V) : Prop :=
     ∃ p : T.graph.Walk s x, p.IsPath ∧ p.length = T.graph.dist s x ∧
       ∀ k ≤ p.length, p.getVert k ∉ D
 
+/-- Reading a path in two acyclic graphs gives the same distance. -/
+theorem GeodAvoid.dist_eq {T U : TreeState V} {D : Set V} {s x : V}
+    (h : GeodAvoid T D s)
+    (hadj : ∀ u v, u ∉ D → v ∉ D → (T.graph.Adj u v ↔ U.graph.Adj u v))
+    (hx : x ∈ T.alive) (hxD : x ∉ D) :
+    T.graph.dist s x = U.graph.dist s x := by
+  obtain ⟨p, hp, hlen, havoid⟩ := h x hx hxD
+  have heq := dist_eq_of_seq U.acyclic
+    (fun k hk => (hadj _ _ (havoid k (by omega))
+      (havoid (k + 1) (by omega))).mp (p.adj_getVert_succ hk))
+    (fun k hk l hl hkl => hp.getVert_injOn hk hl hkl)
+  rw [SimpleGraph.Walk.getVert_zero, SimpleGraph.Walk.getVert_length] at heq
+  exact (heq.trans hlen).symm
+
 /-- `SeqPath T q L`: the vertices `q 0, …, q L` form a path of the state `T` (they are live,
 consecutive ones are adjacent, and there is no repetition). -/
 def SeqPath (T : TreeState V) (q : ℕ → V) (L : ℕ) : Prop :=
@@ -221,8 +235,7 @@ namespace DiamPath
 
 variable {S : TreeState V}
 
-/-- The folding map of a diameter path preserves the complement of a set containing the whole
-diameter path. -/
+/-- The folding map preserves the complement of a set disjoint from the diameter path. -/
 theorem rep_notMem_of_path_notMem (Z : DiamPath S) {D : Set V} (hZ : ∀ i, Z.p i ∉ D) {x : V}
     (hx : x ∉ D) : Z.rep x ∉ D := by
   rcases h : Z.index x with _ | i
@@ -326,27 +339,13 @@ the same distance from `s` in the two states: the geodesic of the first state av
 `geod₁`, and reading it in the second state (possible outside `Δ`, by `Phase1Inv`) gives a walk of
 the same length. -/
 theorem dist_eq_on_common (h : SyncCtx P Q s T₁ T₂ σ) {v : V} (hv : v ∈ T₁.alive)
-    (hvΔ : v ∉ P.Delta Q s) : T₁.graph.dist s v = T₂.graph.dist s v := by
-  obtain ⟨q, hqpath, hqlen, hqΔ⟩ := h.geod₁ v hv hvΔ
-  have hadj : ∀ k < q.length, T₂.graph.Adj (q.getVert k) (q.getVert (k + 1)) := fun k hk =>
-    (h.adj_iff _ _ (hqΔ k (by omega)) (hqΔ (k + 1) (by omega))).mp (q.adj_getVert_succ hk)
-  have hinj : ∀ k ≤ q.length, ∀ l ≤ q.length, q.getVert k = q.getVert l → k = l :=
-    fun k hk l hl hkl => hqpath.getVert_injOn hk hl hkl
-  have h2 := dist_eq_of_seq T₂.acyclic hadj hinj
-  rw [SimpleGraph.Walk.getVert_zero, SimpleGraph.Walk.getVert_length] at h2
-  exact (h2.trans hqlen).symm
+    (hvΔ : v ∉ P.Delta Q s) : T₁.graph.dist s v = T₂.graph.dist s v :=
+  h.geod₁.dist_eq h.adj_iff hv hvΔ
 
 /-- The same statement on the second state. -/
 theorem dist_eq_on_common' (h : SyncCtx P Q s T₁ T₂ σ) {v : V} (hv : v ∈ T₂.alive)
-    (hvΔ : v ∉ P.Delta Q s) : T₁.graph.dist s v = T₂.graph.dist s v := by
-  obtain ⟨q, hqpath, hqlen, hqΔ⟩ := h.geod₂ v hv hvΔ
-  have hadj : ∀ k < q.length, T₁.graph.Adj (q.getVert k) (q.getVert (k + 1)) := fun k hk =>
-    (h.adj_iff _ _ (hqΔ k (by omega)) (hqΔ (k + 1) (by omega))).mpr (q.adj_getVert_succ hk)
-  have hinj : ∀ k ≤ q.length, ∀ l ≤ q.length, q.getVert k = q.getVert l → k = l :=
-    fun k hk l hl hkl => hqpath.getVert_injOn hk hl hkl
-  have h2 := dist_eq_of_seq T₁.acyclic hadj hinj
-  rw [SimpleGraph.Walk.getVert_zero, SimpleGraph.Walk.getVert_length] at h2
-  exact h2.trans hqlen
+    (hvΔ : v ∉ P.Delta Q s) : T₁.graph.dist s v = T₂.graph.dist s v :=
+  h.dist_eq_on_common ((h.mem_iff v hvΔ).mpr hv) hvΔ
 
 /-- **The diameter bound of the difference region**, in the form used by the phase: a live vertex of
 `Δ` is at distance at most `2r` from `s`, so a vertex at distance more than `2r` lies in the common

@@ -110,25 +110,8 @@ the number of vertices: one fold towards any diameter endpoint `s` removes at le
 the far end of the diameter (`DiamPath.foldState_card_lt`), and by Lemma 3 the image of `s` is
 still a diameter endpoint, so the process can be continued on the smaller tree. -/
 theorem LValue_exists_of_isDiamEnd : ∀ (N : ℕ) (S : TreeState V) (s : V),
-    S.alive.card ≤ N → IsDiamEnd S s → ∃ n : ℕ, LValue S s n := by
-  intro N
-  induction N with
-  | zero =>
-      intro S s hcard hs
-      exact absurd (Finset.card_pos.mpr ⟨s, hs.1⟩) (by omega)
-  | succ N ih =>
-      intro S s hcard hs
-      by_cases hsingle : S.alive.card ≤ 1
-      · exact ⟨0, S, FoldSeqAt.refl S, hsingle⟩
-      · have hpos : 2 ≤ S.alive.card := by omega
-        obtain ⟨P, hP⟩ := exists_diamPath_at S hs
-        have hlt : P.foldState.alive.card ≤ N := by
-          have := FoldStep.card_lt (S := S) (S' := P.foldState) ⟨P, rfl⟩ hpos
-          omega
-        have hEnd : IsDiamEnd P.foldState s := by
-          rw [← hP]; exact isDiamEnd_foldState P
-        obtain ⟨n', S'', hseq, hsingle'⟩ := ih P.foldState s hlt hEnd
-        exact ⟨n' + 1, S'', FoldSeqAt.step hpos ⟨P, hP, rfl⟩ hseq, hsingle'⟩
+    S.alive.card ≤ N → IsDiamEnd S s → ∃ n : ℕ, LValue S s n :=
+  LValue_exists_aux
 
 theorem Phi_exists (S : TreeState V) (h : ¬S.alive.card ≤ 1) :
     ∃ s : V, IsDiamEnd S s ∧ ∃ n : ℕ, LValue S s n := by

@@ -1,8 +1,8 @@
 /-
 # REF.md Lemma 5 (§7): the delayed exchange lemma
 
-This file proves the last missing structural ingredient of the proof of `REF.md`, the *delayed
-exchange lemma* (`REF.md` Lemma 5, §7):
+This file develops the initial path geometry for the *delayed exchange lemma*
+(`REF.md` Lemma 5, §7), assembled downstream in `SyncEndgame.lean`:
 
 > Let `s` be a diameter endpoint of a state `S`, and let `P`, `Q` be two diameters of `S` starting
 > at `s`.  Then the two folded trees `P.foldState` and `Q.foldState` admit complete folding
@@ -21,7 +21,7 @@ The proof follows `REF.md` §6–§7 and runs in three steps.
   length `r` hanging at `p r`, while the `P`-tail has been folded back onto the prefix; in
   `Q.foldState` the roles are exchanged.  All differences between the two states therefore live
   inside the ball of radius `2r` around `s`: outside it the two states are literally equal.
-  As long as the diameter `H` of the two (equal) states is `> 2r`, we fold *both* of them along the
+  As long as the common diameter `H` of the two states is `> 2r`, we fold *both* of them along the
   *same* vertex path — a longest path from `s`, which lies in the common part — and the fold map is
   the identity on the difference region, so the situation is preserved while the state shrinks.
 
@@ -30,9 +30,9 @@ The proof follows `REF.md` §6–§7 and runs in three steps.
   moves the subtrees hanging off the two tails to the *same* places `p (r - t)`; the two results are
   therefore the same state.
 
-The lemmas are organised so that each step is a standalone statement: §1 fixes the combinatorics of
-the two paths, §2 the identification of the tails with the prefix, §3 the structure of the two
-folded states, §4 the endgame, §5 the synchronised phase and the final assembly.
+Here §1 fixes the combinatorics of the two paths, §2 identifies the tails with the prefix, and
+§3 constructs the surviving legs. The later modules prove the common-part invariant, the
+synchronised phase, and the endgame.
 -/
 import OhtoaiTreeProof.Cone
 import OhtoaiTreeProof.Iso
@@ -610,12 +610,10 @@ theorem dist_leg' (P Q : DiamPath S) {s : V} (hP : P.p 0 = s) (hQ : Q.p 0 = s)
   have h := Q.dist_leg P hQ hP (by omega)
   rwa [show Q.D - Q.meetIdx P = P.D - P.meetIdx Q by omega, hcase] at h
 
-/-! ## 4. What remains
+/-! ## 4. Downstream proof structure
 
-The two facts proved above are the two ends of the `REF.md` §7 argument.  What is still missing is
-the *synchronised phase* and the *endgame*; the statements below are the exact obligations, in the
-order in which they should be attacked (they are deliberately **not** stated in the file, so that
-the file stays free of `sorry`).
+The remaining parts of `REF.md` §7 are proved in `Phase1.lean`, `CommonDist.lean`, `Sync.lean`,
+`SyncStep.lean`, and `SyncEndgame.lean`. The outline below describes their dependencies.
 
 **(a) The common part.**  Let `C : Finset V` be the complement of
 
@@ -647,8 +645,9 @@ distance `H` from `s` in `P.foldState`; by (a) it is at distance `H` in `Q.foldS
     `(ρ_Z (P.foldState)).Adj u v ↔ (ρ_Z (Q.foldState)).Adj u v`  for `u, v ∈ C`
 
 (the `∃ x y, Adj x y ∧ ρ x = u ∧ ρ y = v` form of `foldGraph_adj` plus `ρ = id` on `Δ`), and the
-whole situation of (a) is reproduced with `H` strictly smaller.  Induction on `H` reduces to
-`H = 2r`.
+whole situation of (a) is reproduced with strictly fewer live vertices. Induction on the live
+vertex count reaches `H = 2r`, since the surviving legs prevent `H < 2r`. Strict decrease of `H`
+is neither assumed nor needed.
 
 **(c) The endgame.**  For `H = 2r`, `Z₁ := P.legSeq Q` (resp. `Z₂ := Q.legSeq P`) is a diameter
 path of `P.foldState` (resp. `Q.foldState`) starting at `s`, by `dist_leg`/`dist_leg'` and (a).  The
@@ -663,10 +662,11 @@ its hanging subtree; by `rep_seq_tail`/`rep_seq_tail_Q` both tails land on the s
 the pieces attached to the spine are already in the same place by (a)), and then
 `foldGraph_adj`'s witness description gives the equality of the two folded states.
 
-**(d) Assembly.**  (b) gives `m` with `FoldSeqAt s P.foldState U m` and `FoldSeqAt s Q.foldState U m`
-for a common state `U`; (c) gives the last step for both.  Then `LValue P.foldState s n ↔
-LValue Q.foldState s n` for `n = m + 1 + ·` and `exchange` follows from
-`LValue_exists_of_isDiamEnd`. -/
+**(d) Assembly.** The synchronised phase gives two states after the same number `m` of folds;
+the endgame gives one further fold from each to a common state `U`. Appending a fixed-endpoint
+completion of `U`, whose existence is proved independently by `LValue_exists_aux`, gives
+complete processes of equal length. When `r = 0`, the first-fold states are already equal,
+and no further common fold is required. -/
 
 
 end DiamPath

@@ -49,6 +49,12 @@ theorem foldAlive_card_lt (hD : 1 ≤ P.D) : P.foldAlive.card < S.alive.card :=
 theorem foldState_card_lt (hD : 1 ≤ P.D) : P.foldState.alive.card < S.alive.card :=
   P.foldAlive_card_lt hD
 
+/-- A positive-length diameter contains at least two live vertices. -/
+theorem two_le_card (hD : 1 ≤ P.D) : 2 ≤ S.alive.card := by
+  have h := Finset.card_le_card P.pathSet_subset
+  rw [P.card_pathSet] at h
+  omega
+
 /-- In a state with at least two vertices the diameter is nonempty. -/
 theorem one_le_D (hcard : 2 ≤ S.alive.card) : 1 ≤ P.D := by
   by_contra hD
@@ -76,11 +82,46 @@ theorem FoldStep.card_lt {S S' : TreeState V} (h : FoldStep S S') (hcard : 2 ≤
   obtain ⟨P, rfl⟩ := h
   exact P.foldState_card_lt (P.one_le_D hcard)
 
-/-- A folding sequence of length `n` starts from a state with at least `n` vertices. -/
-theorem FoldSeq.card_le {S S' : TreeState V} {n : ℕ} (h : FoldSeq S S' n) :
-    n ≤ S.alive.card := by
+/-- Every fold retains its first endpoint, even when the source is a singleton. -/
+theorem FoldStep.alive_nonempty {S S' : TreeState V} (h : FoldStep S S') :
+    S'.alive.Nonempty := by
+  obtain ⟨P, rfl⟩ := h
+  exact ⟨P.p 0, P.zero_mem_foldAlive⟩
+
+/-- Forgetting the fixed endpoint gives an unrestricted legal folding sequence. -/
+theorem FoldSeqAt.toFoldSeq {s : V} {S S' : TreeState V} {n : ℕ}
+    (h : FoldSeqAt s S S' n) : FoldSeq S S' n := by
+  induction h with
+  | refl S => exact .refl S
+  | step hpos hstep _ ih =>
+      obtain ⟨P, _, rfl⟩ := hstep
+      exact .step hpos ⟨P, rfl⟩ ih
+
+/-- A sequence starting from a nonempty state cannot end in the empty state. -/
+theorem FoldSeq.alive_nonempty {S S' : TreeState V} {n : ℕ} (h : FoldSeq S S' n)
+    (hne : S.alive.Nonempty) : S'.alive.Nonempty := by
+  induction h with
+  | refl _ => exact hne
+  | step _ hstep _ ih => exact ih hstep.alive_nonempty
+
+/-- In a complete process from a nonempty tree, "at most one" means exactly one vertex. -/
+theorem FoldSeq.card_eq_one {S S' : TreeState V} {n : ℕ} (h : FoldSeq S S' n)
+    (hne : S.alive.Nonempty) (hsingle : IsSingle S') : S'.alive.card = 1 := by
+  have := Finset.card_pos.mpr (h.alive_nonempty hne)
+  unfold IsSingle at hsingle
+  omega
+
+/-- Each legal operation removes at least one vertex. -/
+theorem FoldSeq.card_add_length_le {S S' : TreeState V} {n : ℕ} (h : FoldSeq S S' n) :
+    S'.alive.card + n ≤ S.alive.card := by
   induction h with
   | refl S => simp
   | step hpos hstep _ ih => have := hstep.card_lt hpos; omega
+
+/-- A folding sequence of length `n` starts from a state with at least `n` vertices. -/
+theorem FoldSeq.card_le {S S' : TreeState V} {n : ℕ} (h : FoldSeq S S' n) :
+    n ≤ S.alive.card := by
+  have := h.card_add_length_le
+  omega
 
 end OhtoaiTreeProof

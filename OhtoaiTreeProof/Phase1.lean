@@ -568,48 +568,17 @@ theorem notMem_Delta_of_lt_dist' (P Q : DiamPath S) {s : V} (hP : P.p 0 = s) (hQ
     (h : 2 * (P.D - P.meetIdx Q) < Q.foldGraph.dist (Q.seq 0) v) : v ∉ P.Delta Q s :=
   fun hv => absurd (P.dist_le_two_mul_tail_of_mem_Delta' Q hP hQ hv hvA) (by omega)
 
-/-! ## 6. What remains: the synchronised phase (obligation (b) of `ExchangeLemma5.lean` §4)
+/-! ## 6. The downstream synchronised phase
 
-Sections 2–5 supply everything about `Δ` and its complement that the synchronised phase needs, but
-the phase itself is *not* proved in this file.  Its exact Lean statement, in the form required by
-the assembly `ExchangeProof.exchange_of_commonEndgame`, is
+`CommonDist.lean` proves equality of distances on the common part. `Sync.lean` supplies common
+geodesics, the surviving legs, and the composite quotient map in `SyncCtx`.
+`SyncStep.lean` preserves this invariant and terminates by strict decrease of the live vertex
+count, not of the diameter. A fold need not decrease the diameter.
 
-```
-theorem exists_commonEndgame_of_deltaBounds (P Q : DiamPath S) {s : V} (hs : IsDiamEnd S s)
-    (hP : P.p 0 = s) (hQ : Q.p 0 = s) :
-    ∃ m T₁ T₂, FoldSeqAt s P.foldState T₁ m ∧ FoldSeqAt s Q.foldState T₂ m ∧
-      CommonEndgame T₁ T₂ s
-```
-
-where (`ExchangeProof.lean` §4)
-
-```
-def CommonEndgame (T₁ T₂ : TreeState V) (s : V) : Prop :=
-  ∃ (Z₁ : DiamPath T₁) (Z₂ : DiamPath T₂), 1 ≤ Z₁.D ∧ Z₁.p 0 = s ∧ Z₂.p 0 = s ∧
-    Z₁.foldState = Z₂.foldState
-```
-
-The intended proof is the synchronised (lockstep) induction on the diameter, with `r = D - ℓ`,
-`ℓ = P.meetIdx Q`:
-
-* *One step.*  While `T₁.diam > 2 * r`, all the folds prescribed by the phase act on vertices in
-  the common part: a vertex that is folded keeps its distance to `s` or is identified with a vertex
-  at distance `1` or `2` less, so a vertex at distance `> 2 * r` from `s` never lies in `Δ`
-  (`notMem_Delta_of_lt_dist`, `notMem_Delta_of_lt_dist'`).  One therefore folds both states along
-  the *same* common diameter path `Z` (a `DiamPath P.foldState` whose vertices avoid `P.Delta Q s`),
-  which is legitimate because on `C` the two states have the same vertices
-  (`mem_foldAlive_iff_of_not_mem_Delta`) and the same edges
-  (`foldGraph_adj_iff_of_not_mem_Delta`); an explicit common path is transported by
-  `reachable_of_seq_common`.
-* *Termination.*  Each such fold lowers the diameter of both states by `2`, until
-  `T₁.diam = T₂.diam = 2 * r`; both states are then folded by their legs, which coincide by
-  `ExchangeProof.legPath_foldState_eq`, so `CommonEndgame T₁ T₂ s` holds.
-
-The missing input for the termination argument, which is *not* established here, is that the two
-folded states have the *same* diameter to begin with: `P.foldState.diam = Q.foldState.diam` — the
-`Δ`-bounds show that `dist` in either state is at most `2 * r` on the difference region, but an
-equality of the two diameters (equivalently: a far vertex of the common part is equally far in
-both states) still has to be proved. -/
+For positive tail length, `exists_commonEndgame_of_pos_tail` in `SyncEndgame.lean` reaches a
+common endgame after equal numbers of legal steps. When the tail length is zero, the initial
+folded states are already equal. `synchronized_exchange` handles that case directly, including
+singleton results for which another fold would be illegal. -/
 
 end DiamPath
 
